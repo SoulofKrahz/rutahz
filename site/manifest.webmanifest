@@ -1,0 +1,86 @@
+{
+  "id": "./",
+  "name": "Rutahz",
+  "short_name": "Rutahz",
+  "description": "Kilometraje de tus rutas de visitas: paradas, kilómetros reales, historial e informes.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6fa",
+  "theme_color": "#0a9d5c",
+  "categories": [
+    "productivity",
+    "business",
+    "navigation"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Añadir parada",
+      "short_name": "Parada",
+      "description": "Abrir la ruta de hoy para añadir una parada",
+      "url": "./?a=add",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Historial",
+      "short_name": "Historial",
+      "description": "Jornadas guardadas",
+      "url": "./?a=hist",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Informe del mes",
+      "short_name": "Informe",
+      "description": "Informe imprimible del mes en curso",
+      "url": "./?a=report",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://rutahz.pages.dev/manifest.webmanifest"
+    }
+  ]
+}

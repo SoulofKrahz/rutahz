@@ -1,0 +1,42 @@
+# Prueba la app y, si todo va bien, publica la carpeta site/ en Cloudflare Pages (rama main).
+# Secretos (Settings → Secrets and variables → Actions): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# Variable: CF_PROJECT = nombre del proyecto de Pages (rutahz).
+name: Publicar en Cloudflare Pages
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'tests/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+jobs:
+  test:
+    name: Prueba de humo
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Playwright y Chromium
+        run: npm i --no-save --no-audit --no-fund playwright@1.55.0 && npx playwright install --with-deps chromium
+      - name: Probar la app (móvil y PC)
+        run: node tests/smoke.cjs
+  deploy:
+    name: Publicar
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generar version.txt (aviso de versión nueva)
+        run: grep -o "const VER = '[^']*'" site/index.html | cut -d"'" -f2 > site/version.txt && cat site/version.txt
+      - uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ vars.CF_PROJECT }} --branch=main --commit-dirty=true
