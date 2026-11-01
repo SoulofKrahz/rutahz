@@ -1,0 +1,16 @@
+# Diagnóstico manual: comprueba desde fuera que la web y el proxy responden.
+name: Comprobar la web
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Comprobar
+        run: |
+          for u in https://rutahz.pages.dev/ https://rutahz.pages.dev/version.txt "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" https://rutahz.pages.dev/manifest.webmanifest; do
+            echo "== $u"; curl -sS -m 20 -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s · IP %{remote_ip}\n' "$u" || echo "FALLO curl $?"; head -c 200 /tmp/b 2>/dev/null; echo
+          done
+          echo "== DNS"; getent hosts rutahz.pages.dev || echo "sin DNS"
+          echo "== proxy con origen propio"; curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" || echo FALLO; head -c 200 /tmp/b; echo
+          curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/g/search?q=Inca%2C%20Mallorca&limit=1" || echo FALLO; head -c 200 /tmp/b; echo
