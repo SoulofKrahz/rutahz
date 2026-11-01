@@ -3,7 +3,7 @@
 const { chromium, devices } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const SITE = path.join(__dirname, '..', 'site');
-const srv = http.createServer((q, s) => { const f = path.join(SITE, decodeURIComponent(q.url.split('?')[0]).replace(/\/$/, '/index.html')); fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); return s.end(); } s.writeHead(200, { 'Content-Type': f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'application/javascript' : 'application/octet-stream' }); s.end(b); }); });
+const srv = http.createServer((q, s) => { const f = path.join(SITE, decodeURIComponent(q.url.split('?')[0]).replace(/\/$/, '/index.html')); fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); return s.end(); } const T = { html: 'text/html', js: 'application/javascript', css: 'text/css', svg: 'image/svg+xml', png: 'image/png', json: 'application/json', webmanifest: 'application/manifest+json' }; s.writeHead(200, { 'Content-Type': T[f.split('.').pop()] || 'application/octet-stream' }); s.end(b); }); });
 const fail = m => { console.error('FALLO:', m); process.exit(1); };
 srv.listen(0, async () => {
   const BASE = `http://127.0.0.1:${srv.address().port}/`, errors = [];

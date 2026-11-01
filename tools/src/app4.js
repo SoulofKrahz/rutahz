@@ -19,7 +19,7 @@ function renderAjustesLists() {
     $('#favRn').onclick = async () => { const v = await prompt2('Nombre del punto de partida habitual', D.fav.label); if (v && v.trim()) { const wasCur = D.cur.start && near(D.cur.start, D.fav); D.fav.label = v.trim(); if (wasCur) D.cur.start.label = D.fav.label; save(); renderAjustesLists(); renderRuta(); } };
     $('#favRm').onclick = () => { const old = D.fav; D.fav = null; save(); renderAjustesLists(); renderRuta(); toast('Punto habitual quitado', { undo: () => { D.fav = old; save(); renderAjustesLists(); renderRuta(); } }); };
   }
-  const cl = $('#clList'), cnt = visitCounts();
+  const cl = $('#clList'); if (!cl) return; const cnt = visitCounts();
   cl.innerHTML = D.clients.length ? D.clients.slice().sort((a, b) => a.label.localeCompare(b.label, 'es')).map(c => `<div class="row" data-id="${c.id}"><div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Sin visitas guardadas'}</small></div><button class="gb rn" aria-label="Cambiar nombre de ${esc(c.label)}">${ic('edit')}</button><button class="gb dg rm" aria-label="Quitar ${esc(c.label)}">${ic('trash')}</button></div>`).join('') : '<p class="hint">Todavía no has guardado ninguno.</p>';
   cl.querySelectorAll('.row').forEach(r => {
     const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
@@ -232,7 +232,7 @@ function showHelp() {
   dlg({ title: 'Cómo funciona', acts: [{ t: 'Entendido', v: null }],
     html: `<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:.9rem;line-height:1.45">
       <li><b>Punto de partida.</b> Busca tu oficina o elígela en el mapa y toca la ${ic('star')} estrella: cada jornada nueva empezará ahí.</li>
-      <li><b>Paradas.</b> Añade cada visita en orden: escribiendo el cliente o la dirección, con «Elegir en el mapa» o con el GPS.</li>
+      <li><b>Paradas.</b> Añade cada visita en orden: escribiendo un destino guardado o la dirección, con «Elegir en el mapa» o con el GPS. En <b>Destinos</b> guardas tus sitios habituales.</li>
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
       <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
@@ -258,7 +258,7 @@ function maybeBanner() {
     if (installEvt) return banner('in', 'inst', 'Instala Rutahz', 'Se abre desde el icono y el navegador protege mejor tus datos.', [{ t: 'Ahora no', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Instalar', fn: doInstall }]);
     if (isIOS() && D.hist.length >= 1) return banner('in', 'inst', 'Instálala en tu iPhone', 'Toca Compartir y «Añadir a pantalla de inicio». Así Safari no borra tus datos si pasas una semana sin abrirla.', [{ t: 'Más tarde', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Entendido', fn: () => { M.iz = now + 30 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }]);
   }
-  if (D.hist.length && (M.bz || 0) < now && (!M.lb || daysBetween(M.lb, today()) > 14)) {
+  if ((D.hist.length >= 3 || (D.hist.length && M.fu && daysBetween(M.fu, today()) >= 3)) && (M.bz || 0) < now && (!M.lb || daysBetween(M.lb, today()) > 14)) {
     const d = M.lb ? daysBetween(M.lb, today()) : null;
     return banner('bk', 'shield', 'Haz una copia de seguridad', d == null ? `Tienes ${D.hist.length} jornada${D.hist.length > 1 ? 's' : ''} y ninguna copia.` : `La última fue hace ${d} días.`, [{ t: 'Más tarde', cls: 'g', fn: () => { M.bz = now + 3 * 864e5; saveM(); } }, { t: 'Hacer copia', icon: 'share', fn: () => doBackup(true) }]);
   }
@@ -298,11 +298,12 @@ function setView(v) {
   if (document.body.classList.contains('busy') && !routing) document.body.classList.remove('busy');
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
   $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
+  if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'dest') renderDest(); else if (dSel) dSel = null; if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
   if (isMob()) scrollTo({ top: 0 }); else $('#pane').scrollTop = 0;
   if (v === 'ruta') setTimeout(() => map.invalidateSize(), 30);
 }
 $$('.tab,.bb button').forEach(b => b.onclick = () => setView(b.dataset.v));
+$('#bGoDest').onclick = () => setView('dest');
 function renderAll() { renderRuta(); renderHist(); renderStats(); renderChip(); renderAjustesLists(); }
 function netPaint() { $('#offB').hidden = navigator.onLine; }
 addEventListener('online', () => { netPaint(); if (R.src === 'straight') { toast('Conexión recuperada: recalculando por carretera…'); routeCache.clear(); recalc(); } });

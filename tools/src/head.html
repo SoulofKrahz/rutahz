@@ -50,7 +50,7 @@ if(rzLocked()&&!rzInApp()&&navigator.getInstalledRelatedApps)navigator.getInstal
 <script>try{var p=JSON.parse(localStorage.getItem('rz_pf'))||{},t=p.th,d=document.documentElement;if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';d.dataset.theme=t;d.style.setProperty('--fs',p.fs||1);if(p.hc)d.classList.add('hc');if(p.rm===true||(p.rm==null&&matchMedia('(prefers-reduced-motion: reduce)').matches))d.classList.add('rm');if(p.mc)d.classList.add('mapc')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root{--bg:#f4f6fa;--card:#fff;--bd:#e1e6ee;--tx:#101827;--mu:#5a6578;--em:#047857;--em2:#059669;--tint:#e7f5ee;--onem:#fff;--dg:#c0392b;--dgt:#e5484d1f;--wn:#a8640a;--wnt:#f5a5241f;
  --sh:0 1px 2px #0f172a0d,0 14px 32px -22px #0f172a66;--r:18px;--lg:#22395a;--bbh:64px;--fs:1}
@@ -232,6 +232,16 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 @media(max-width:900px){.savez{bottom:calc(var(--bbh) + env(safe-area-inset-bottom));margin:0 -14px -24px;padding:10px 14px 12px}}
 .savez.on{position:sticky}.savez .btn{width:100%;min-height:52px;font-size:.9375rem;box-shadow:0 10px 24px -12px var(--em)}
 .lks{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:.8125rem}.lks button{color:var(--mu);font-weight:600;padding:8px 4px;display:inline-flex;align-items:center;gap:6px}.lks button:hover{color:var(--em)}.lks button.dg:hover{color:var(--dg)}.lks svg{width:15px;height:15px}
+
+/* ===== Destinos ===== */
+.dr{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.dr:first-child{border-top:0}
+.dr .ck{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--bd);color:transparent;font:700 .75rem/1 Inter,sans-serif}
+.dr .ck.on{background:var(--em);border-color:var(--em);color:var(--onem)}
+.dr .ic0{width:34px;height:34px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--tint);color:var(--em)}
+.dr .bd{flex:1;min-width:0;text-align:left}.dr .bd b{display:block;font-weight:600;font-size:.9375rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr .bd small{display:block;font-size:.75rem;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr .in{flex:none;font-size:.6875rem;font-weight:700;color:var(--em);background:var(--tint);border-radius:99px;padding:2px 8px}
+.dsel{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:14px;background:var(--tint);font-size:.8125rem;position:sticky;top:8px;z-index:3}
 
 /* ===== Historial ===== */
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 .75rem Inter,sans-serif;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:10px 4px 0}

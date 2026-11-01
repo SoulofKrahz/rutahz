@@ -1,6 +1,6 @@
 # Rutahz 2.0 — Despliegue en Cloudflare Pages
 
-Versión: `2026-11-01-1` · Service worker: `rz-v2`
+Versión: `2026-11-01-3` · Service worker: `rz-v4`
 
 ## Antes de nada: pasar los datos desde Netlify
 
@@ -30,8 +30,8 @@ Netlify y Cloudflare son direcciones distintas. El navegador **no** comparte los
 | Archivo | Para qué |
 |---|---|
 | `index.html` | La app entera: interfaz, estilos y lógica, sin compilación. |
-| `_worker.js` | Proxy propio. `/r/` calcula rutas con OSRM y `/g/` busca direcciones con Nominatim. Solo atiende a la propia web, con caché en Cloudflare. También sirve el manifest con el icono del color elegido. |
-| `_routes.json` | Limita el worker a `/r/*`, `/g/*` y el manifest, para que el resto no gaste cuota. |
+| `_worker.js` | Proxy propio. `/r/` calcula rutas con OSRM, `/t/` busca el orden de paradas con menos km y `/g/` busca direcciones con Nominatim. Solo atiende a la propia web, con caché en Cloudflare. También sirve el manifest con el icono del color elegido. |
+| `_routes.json` | Limita el worker a `/r/*`, `/t/*`, `/g/*` y el manifest, para que el resto no gaste cuota. |
 | `sw.js` | Abre la app al instante y sin conexión. Guarda hasta 900 teselas del mapa ya vistas. |
 | `version.txt` | La app lo compara con su versión y ofrece «Actualizar». |
 | `manifest*.webmanifest`, `ic/`, `icon-*.png`, `icono.svg` | Instalación e iconos en los 10 colores. |
@@ -53,4 +53,8 @@ Funciona en el plan gratuito de Workers, con 100.000 peticiones al día. Si se s
 
 - **OSRM público** (`router.project-osrm.org`): es un servidor de demostración sin garantías. Si falla, las jornadas se guardan como «estimadas» y se recalculan desde el Historial. Las peticiones van espaciadas a 1 por segundo.
 - **Nominatim**: su política pide como mucho 1 búsqueda por segundo y un User-Agent identificado. El worker pone el User-Agent y la app espera 600 ms al escribir.
-- **Teselas de Esri** y **Leaflet** desde unpkg.
+- **Teselas de Esri**. Leaflet va incluido en `vendor/` (no depende de unpkg, que también está en Cloudflare).
+
+## Bloqueos de LaLiga
+
+Durante los partidos, los operadores españoles bloquean IP de Cloudflare y la web puede no abrir desde casa. Con la app instalada y abierta antes, se abre igual desde la copia guardada; los cálculos pasan solos a los servicios directos si el proxy no responde en 7 s. La solución definitiva es un dominio propio fuera de las IP bloqueadas, o esperar al final del partido.

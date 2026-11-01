@@ -1,8 +1,8 @@
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-01-2';
+const VER = '2026-11-01-3';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -131,16 +131,16 @@ function sheet(o) {
 }
 
 /* =================== Red: proxy propio con respaldo directo =================== */
-let proxyOK = null; // null = sin comprobar; true = _worker.js responde; false = no hay proxy (Netlify, archivo local)
+let proxyOK = null, proxySkip = 0; // proxyOK false = no hay proxy (Netlify, archivo local); proxySkip = hasta cuándo no probarlo (p. ej. Cloudflare bloqueado en España durante el fútbol)
 async function api(path, direct) {
-  if (proxyOK !== false && /^https?:$/.test(location.protocol)) {
+  if (proxyOK !== false && Date.now() > proxySkip && /^https?:$/.test(location.protocol)) {
     try {
-      const r = await fetch(path, { headers: { Accept: 'application/json' } });
+      const r = await fetch(path, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout ? AbortSignal.timeout(7000) : undefined });
       if (r.headers.get('X-Rz')) { proxyOK = true; if (r.ok) return await r.json(); }
       else proxyOK = false;
-    } catch (e) { if (!navigator.onLine) throw e; }
+    } catch (e) { if (!navigator.onLine) throw e; proxySkip = Date.now() + 10 * 60000; }
   }
-  const r = await fetch(direct, { headers: { Accept: 'application/json' }, referrerPolicy: 'strict-origin-when-cross-origin' });
+  const r = await fetch(direct, { headers: { Accept: 'application/json' }, referrerPolicy: 'strict-origin-when-cross-origin', signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined });
   if (!r.ok) throw new Error('http ' + r.status);
   return r.json();
 }

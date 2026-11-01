@@ -1,6 +1,7 @@
 // Rutahz — Cloudflare Pages (modo avanzado: _worker.js).
 //
 //   /r/<lon,lat;lon,lat;…>      → cálculo de ruta por carretera (OSRM público)
+//   /t/<lon,lat;…>[?end=last]    → orden de paradas con menos km (OSRM trip)
 //   /g/search?q=…               → buscar direcciones (Nominatim / OpenStreetMap)
 //   /g/reverse?lat=…&lon=…      → dirección de un punto del mapa (Nominatim)
 //   /manifest.webmanifest       → manifest con el icono del color con el que se instaló la app
@@ -69,6 +70,14 @@ function route(url) {
   return upstream(target, url, ROUTE_TTL);
 }
 
+// Orden óptimo de las paradas (problema del viajante de OSRM). end=last: termina en la última parada; si no, vuelve al inicio.
+function trip(url) {
+  const coords = decodeURIComponent(url.pathname.slice(3));
+  if (!COORDS_RE.test(coords)) return txt('Coordenadas no válidas', 400);
+  const q = url.searchParams.get('end') === 'last' ? 'source=first&destination=last&roundtrip=false' : 'source=first&roundtrip=true';
+  return upstream(`https://router.project-osrm.org/trip/v1/driving/${coords}?${q}&overview=false`, url, ROUTE_TTL);
+}
+
 // Solo se reenvían estos parámetros, con estos formatos
 const GEO_PARAMS = {
   search: { q: /^.{1,200}$/s, limit: /^\d{1,2}$/, viewbox: /^-?[\d.]+,-?[\d.]+,-?[\d.]+,-?[\d.]+$/, bounded: /^[01]$/, countrycodes: /^[a-z]{2}(,[a-z]{2})*$/, addressdetails: /^[01]$/ },
@@ -107,11 +116,11 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/manifest.webmanifest') return manifest(req, url, env);
-    const isApi = url.pathname.startsWith('/r/') || url.pathname.startsWith('/g/');
+    const isApi = url.pathname.startsWith('/r/') || url.pathname.startsWith('/g/') || url.pathname.startsWith('/t/');
     if (isApi) {
       if (req.method !== 'GET') return txt('Método no permitido', 405, { Allow: 'GET' });
       if (!sameOrigin(req, url)) return txt('Solo desde la propia web', 403);
-      try { return url.pathname.startsWith('/r/') ? await route(url) : await geo(url); }
+      try { return url.pathname.startsWith('/r/') ? await route(url) : url.pathname.startsWith('/t/') ? await trip(url) : await geo(url); }
       catch (e) { return txt('Error interno del proxy', 502); }
     }
     return env.ASSETS.fetch(req);

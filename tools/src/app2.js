@@ -98,15 +98,15 @@ $('#histPillX').onclick = closeHistView;
 
 /* ---- Elegir en el mapa (punto fijo en el centro: sin toques accidentales) ---- */
 let pick = null, pickT = null, pickTok = 0;
-function startPick(kind) {
+function startPick(kind, ref0) {
   if (viewingHist) closeHistView();
   setView('ruta');
-  pick = { kind, label: '' }; document.body.classList.add('picking');
+  pick = { kind, label: '', ref: kind === 'dest-move' ? ref0 : null }; document.body.classList.add('picking');
   $('#pick').hidden = false; $('#pickBar').hidden = false;
-  $('#pickOkT').textContent = kind === 'start' ? 'Fijar inicio aquí' : 'Añadir aquí';
+  $('#pickOkT').textContent = { start: 'Fijar inicio aquí', stop: 'Añadir aquí', 'dest-new': 'Guardar aquí', 'dest-move': 'Mover aquí' }[kind] || 'Añadir aquí';
   $('#pickT').textContent = 'Mueve el mapa hasta el punto'; $('#pickS').textContent = 'La punta del marcador marca el sitio exacto';
   if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
-  const ref = kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav);
+  const ref = ref0 || (kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav));
   setTimeout(() => { map.invalidateSize(); if (ref && map.getZoom() < 14) map.setView([ref.lat, ref.lon], 15, { animate: !RM }); else pickLookup(); }, 80);
   map.on('moveend', pickMoved);
 }
@@ -126,9 +126,12 @@ async function pickLookup() {
 function endPick() { pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
 $('#pickNo').onclick = endPick;
 $('#pickOk').onclick = () => {
-  if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa';
+  if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa', ref = pick.ref;
   endPick();
-  if (k === 'start') setStart(c.lat, c.lng, lb); else addStop(c.lat, c.lng, lb);
+  if (k === 'start') setStart(c.lat, c.lng, lb);
+  else if (k === 'dest-new') newDestAt(c.lat, c.lng, lb);
+  else if (k === 'dest-move' && ref) { const o = { lat: ref.lat, lon: ref.lon }; ref.lat = c.lat; ref.lon = c.lng; ref.addr = lb; save(); renderDest(); setView('dest'); toast(`«${ref.label}» movido`, { undo: () => { ref.lat = o.lat; ref.lon = o.lon; save(); renderDest(); } }); }
+  else addStop(c.lat, c.lng, lb);
 };
 
 /* =================== Acciones de la ruta =================== */
@@ -178,11 +181,11 @@ function toggleClient(s) {
     const idx = D.clients.indexOf(cl); D.clients.splice(idx, 1);
     D.cur.stops.forEach(x => { if (x.cid === cl.id) x.cid = null; });
     save(); renderRuta(); renderAjustesLists();
-    toast(`«${cl.label}» ya no está en tus clientes`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
+    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
   } else {
-    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Cliente' };
+    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Destino', addr: s.label || '', at: today() };
     D.clients.push(c); s.cid = c.id; save(); renderRuta(); renderAjustesLists();
-    toast(`Guardado en clientes: ${c.label}`);
+    toast(`Guardado en tus destinos: ${c.label}`);
   }
 }
 function stopMenu(s) {
@@ -192,7 +195,7 @@ function stopMenu(s) {
     i < a.length - 1 && { icon: 'down', label: 'Bajar', fn: () => moveStop(s, 'down') },
     { icon: 'eye', label: 'Ver en el mapa', fn: () => { setView('ruta'); if (isMob()) scrollTo({ top: 0 }); setTimeout(() => { map.invalidateSize(); map.setView([s.lat, s.lon], 16, { animate: !RM }); }, 60); } },
     { icon: 'edit', label: 'Cambiar nombre', fn: async () => { const v = await prompt2('Nombre de la parada', s.label); if (v != null && v.trim()) { s.label = v.trim(); save(); renderRuta(); drawMarkers(); } } },
-    { icon: 'star', label: isCl ? 'Quitar de clientes guardados' : 'Guardar como cliente', sub: isCl ? '' : 'Para añadirlo en un toque otro día', fn: () => toggleClient(s) },
+    { icon: 'dest', label: isCl ? 'Quitar de mis destinos' : 'Guardar en mis destinos', sub: isCl ? '' : 'Para añadirlo en un toque otro día', fn: () => toggleClient(s) },
     { icon: 'trash', label: 'Quitar parada', danger: true, fn: () => removeStop(s) },
   ] });
 }
@@ -204,10 +207,10 @@ function setupSearch(inp, box, kind) {
   function paint(live, state) {
     const q = norm(inp.value); items = [];
     let h = '';
-    if (kind === 'stop') {
+    if (kind === 'stop' && inp.id === 'stopQ') {
       const cnt = visitCounts();
       const cl = D.clients.filter(c => norm(c.label).includes(q)).sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0)).slice(0, 5);
-      if (cl.length) { h += '<h6>Tus clientes</h6>'; cl.forEach(c => { items.push({ lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); h += `<button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Cliente guardado'}</small></div></button>`; }); }
+      if (cl.length) { h += '<h6>Tus destinos</h6>'; cl.forEach(c => { items.push({ lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); h += `<button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Destino guardado'}</small></div></button>`; }); }
     }
     if (kind === 'start' && D.fav && norm(D.fav.label).includes(q)) { items.push({ ...D.fav }); h += `<h6>Habitual</h6><button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(D.fav.label)}</b><small>Tu punto de partida habitual</small></div></button>`; }
     const tw = TOWNS.filter(x => norm(x[0]).startsWith(q) || (q.length > 2 && norm(x[0]).includes(q))).slice(0, 3);
@@ -215,7 +218,7 @@ function setupSearch(inp, box, kind) {
     if (live && live.length) { h += '<h6>Direcciones</h6>'; live.forEach(r => { const p = placeLabel(r); items.push({ lat: +r.lat, lon: +r.lon, label: p.label }); h += `<button data-i="${items.length - 1}">${ic('pin')}<div><b>${esc(p.main)}</b><small>${esc(p.sub)}</small></div></button>`; }); }
     if (state === 'busy') h += '<p class="ld">Buscando direcciones…</p>';
     else if (state === 'none' && !items.length) h += '<p>Sin resultados. Prueba con otra forma de escribirlo o usa «Elegir en el mapa».</p>';
-    else if (state === 'off') h += '<p>Sin conexión: solo clientes guardados y municipios.</p>';
+    else if (state === 'off') h += '<p>Sin conexión: solo tus destinos y los municipios.</p>';
     else if (state === 'err') h += '<p>No se ha podido buscar ahora. Usa «Elegir en el mapa».</p>';
     box.innerHTML = h; box.hidden = !h;
     box.querySelectorAll('button[data-i]').forEach(b => b.onmousedown = e => e.preventDefault());
@@ -224,7 +227,7 @@ function setupSearch(inp, box, kind) {
   }
   function choose(it) {
     if (!it) return; inp.value = ''; close(); inp.blur();
-    if (kind === 'start') setStart(it.lat, it.lon, it.label); else addStop(it.lat, it.lon, it.label, it.cid);
+    if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
     try { const r = await geoSearch(q, 5); if (my !== tok) return; paint(r, r.length ? '' : 'none'); }
@@ -247,7 +250,7 @@ function setupSearch(inp, box, kind) {
 setupSearch($('#startQ'), $('#startSug'), 'start');
 setupSearch($('#stopQ'), $('#stopSug'), 'stop');
 
-/* =================== Clientes y visitas =================== */
+/* =================== Destinos y visitas =================== */
 function clientOf(s) { return (s.cid && D.clients.find(c => c.id === s.cid)) || D.clients.find(c => near(c, s)) || null; }
 function visitCounts() {
   const m = new Map();
@@ -257,16 +260,17 @@ function visitCounts() {
 let multi = false, sel = [], showAllCl = false;
 function renderClients() {
   const box = $('#clientsBox');
-  if (!D.clients.length) { box.innerHTML = D.cur.stops.length ? `<p class="hint">Consejo: guarda tus clientes habituales con ${'⋯'} › «Guardar como cliente» y los añadirás en un toque.</p>` : ''; return; }
+  if (!D.clients.length) { box.innerHTML = `<p class="hint">Guarda tus sitios habituales en <button class="lnk" id="goDest">Destinos</button> (o con ⋯ › «Guardar en mis destinos» en cada parada) y los añadirás en un toque.</p>`; $('#goDest').onclick = () => setView('dest'); return; }
   const cnt = visitCounts(), list = D.clients.slice().sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0) || a.label.localeCompare(b.label, 'es'));
   const N = 12, shown = showAllCl || multi ? list : list.slice(0, N);
-  let h = `<div class="clh"><h3>Clientes guardados</h3><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button></div><div class="cls" style="margin-top:8px">`;
+  let h = `<div class="clh"><h3>Tus destinos</h3><span><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button><button id="clGo" style="margin-left:8px">Todos</button></span></div><div class="cls" style="margin-top:8px">`;
   shown.forEach(c => { const si = sel.indexOf(c.id); h += `<button class="cl ${si >= 0 ? 'on' : ''}" data-id="${c.id}">${si >= 0 ? `<b>${si + 1}</b>` : ''}<span>${esc(c.label)}</span>${cnt.get(c.id) ? `<i>${cnt.get(c.id)}</i>` : ''}</button>`; });
-  if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>Ver todos (${list.length})</span></button>`;
+  if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>+${list.length - N} más</span></button>`;
   h += '</div>';
-  if (multi) h += `<div class="selb" style="margin-top:10px"><span>${sel.length ? sel.length + ' en este orden' : 'Toca los clientes en el orden de la visita'}</span><button class="btn sm" id="clAdd" ${sel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></div>`;
+  if (multi) h += `<div class="selb" style="margin-top:10px"><span>${sel.length ? sel.length + ' en este orden' : 'Tócalos en el orden de la visita'}</span><button class="btn sm" id="clAdd" ${sel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></div>`;
   box.innerHTML = h;
   $('#clMulti').onclick = () => { multi = !multi; sel = []; renderClients(); };
+  $('#clGo').onclick = () => setView('dest');
   const all = $('#clAll'); if (all) all.onclick = () => { showAllCl = true; renderClients(); };
   box.querySelectorAll('.cl[data-id]').forEach(b => b.onclick = () => {
     const c = D.clients.find(x => x.id === b.dataset.id); if (!c) return;
@@ -280,6 +284,112 @@ function renderClients() {
     toast(`${n} parada${n > 1 ? 's' : ''} añadida${n > 1 ? 's' : ''}`);
   };
 }
+
+/* ---- Vista Destinos ---- */
+let dSort = 'vis', dSel = null; // dSel: null = sin selección; array = ids en orden
+function visitInfo() {
+  const m = new Map();
+  D.hist.forEach(j => j.stops.forEach(s => { const c = clientOf(s); if (!c) return; const r = m.get(c.id) || { n: 0, last: '' }; r.n++; if ((j.iso || '') > r.last) r.last = j.iso || ''; m.set(c.id, r); }));
+  return m;
+}
+function renderDest() {
+  const el = $('#destList'); if (!el) return;
+  const info = visitInfo(), q = norm($('#dq').value);
+  const ref = D.cur.stops[D.cur.stops.length - 1] || D.cur.start || D.fav;
+  let list = D.clients.filter(c => !q || norm(c.label).includes(q) || norm(c.addr).includes(q));
+  const vi = c => info.get(c.id) || { n: 0, last: '' };
+  if (dSort === 'vis') list.sort((a, b) => vi(b).n - vi(a).n || a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'az') list.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'rec') list.sort((a, b) => (vi(b).last || b.at || '').localeCompare(vi(a).last || a.at || '') || a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'near' && ref) list.sort((a, b) => hav(ref, a) - hav(ref, b));
+  $('#destSub').textContent = D.clients.length ? `${D.clients.length} destino${D.clients.length > 1 ? 's' : ''}${dSort === 'near' && ref ? ' · por cercanía a «' + ref.label + '»' : ''}` : 'Los sitios que visitas: añádelos a la ruta en un toque';
+  $$('#sgDs button').forEach(b => b.classList.toggle('on', b.dataset.v === dSort));
+  const inRoute = new Set(D.cur.stops.map(s => clientOf(s)?.id).filter(Boolean));
+  $('#destBar').innerHTML = dSel ? `<div class="dsel"><span>${dSel.length ? dSel.length + ' para la ruta, en este orden' : 'Toca los destinos en el orden de la visita'}</span><span class="brow" style="flex-wrap:nowrap"><button class="btn g sm" id="dsNo">Cancelar</button><button class="btn sm" id="dsOk" ${dSel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></span></div>`
+    : (D.clients.length > 1 ? `<div style="display:flex;justify-content:flex-end"><button class="lnk" id="dsGo" style="font-size:.8125rem">Planificar: elegir varios</button></div>` : '');
+  if (!D.clients.length) el.innerHTML = `<div class="empty"><b>Sin destinos todavía</b>Pulsa «Nuevo» para guardar un sitio, o guarda una parada desde su menú ⋯.</div>`;
+  else if (!list.length) el.innerHTML = `<div class="empty"><b>Sin resultados</b>Prueba con otro nombre.</div>`;
+  else el.innerHTML = list.map(c => { const v = vi(c), si = dSel ? dSel.indexOf(c.id) : -1, km = dSort === 'near' && ref ? nf1.format(hav(ref, c)) + ' km · ' : '';
+    return `<div class="dr" data-id="${esc(c.id)}">${dSel ? `<button class="ck ${si >= 0 ? 'on' : ''}" aria-label="Elegir ${esc(c.label)}">${si >= 0 ? si + 1 : ''}</button>` : `<span class="ic0">${ic('dest')}</span>`}<button class="bd" aria-label="Opciones de ${esc(c.label)}"><b>${esc(c.label)}</b><small>${km}${v.n ? v.n + ' visita' + (v.n > 1 ? 's' : '') + ' · última ' + fmtDateS(v.last) : 'Sin visitas guardadas'}${c.addr && c.addr !== c.label ? ' · ' + esc(c.addr) : ''}</small></button>${inRoute.has(c.id) ? '<span class="in">en la ruta</span>' : ''}${dSel ? '' : `<button class="gb ad" aria-label="Añadir ${esc(c.label)} a la ruta">${ic('plus')}</button>`}</div>`; }).join('');
+  el.querySelectorAll('.dr').forEach(r => {
+    const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
+    const tog = () => { const i = dSel.indexOf(c.id); i >= 0 ? dSel.splice(i, 1) : dSel.push(c.id); renderDest(); };
+    if (dSel) { r.querySelector('.ck').onclick = tog; r.querySelector('.bd').onclick = tog; }
+    else { r.querySelector('.bd').onclick = () => destMenu(c); r.querySelector('.ad').onclick = () => addStop(c.lat, c.lon, c.label, c.id); }
+  });
+  const g = $('#dsGo'); if (g) g.onclick = () => { dSel = []; renderDest(); };
+  const n = $('#dsNo'); if (n) n.onclick = () => { dSel = null; renderDest(); };
+  const o = $('#dsOk'); if (o) o.onclick = () => {
+    if (!D.cur.start) return toast('Primero elige el punto de partida en «Ruta».');
+    const k = dSel.length; dSel.forEach(id => { const c = D.clients.find(x => x.id === id); if (c) D.cur.stops.push({ id: uid(), lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); });
+    dSel = null; save(); renderRuta(); recalc(); setView('ruta'); setTimeout(fitCur, 100);
+    toast(`${k} parada${k > 1 ? 's' : ''} añadida${k > 1 ? 's' : ''} a la ruta`);
+  };
+}
+$('#dq').addEventListener('input', renderDest);
+$$('#sgDs button').forEach(b => b.onclick = () => { dSort = b.dataset.v; if (dSort === 'near' && !(D.cur.start || D.fav)) toast('Para ordenar por cercanía, elige antes un punto de partida.'); renderDest(); });
+function destMenu(c) {
+  const v = visitInfo().get(c.id) || { n: 0, last: '' };
+  sheet({ title: c.label, sub: v.n ? `${v.n} visita${v.n > 1 ? 's' : ''} · última el ${fmtDate(v.last, { day: 'numeric', month: 'long' })}` : (c.addr || 'Sin visitas guardadas'), items: [
+    { icon: 'plus', label: 'Añadir a la ruta de hoy', fn: () => addStop(c.lat, c.lon, c.label, c.id) },
+    { icon: 'eye', label: 'Ver en el mapa', fn: () => { setView('ruta'); if (isMob()) scrollTo({ top: 0 }); setTimeout(() => { map.invalidateSize(); map.setView([c.lat, c.lon], 16, { animate: !RM }); L.popup({ closeButton: false, offset: [0, -6] }).setLatLng([c.lat, c.lon]).setContent(esc(c.label)).openOn(map); }, 80); } },
+    { icon: 'edit', label: 'Cambiar nombre', fn: async () => { const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia también en la ruta de hoy. El historial guarda el nombre de cada día, pero las visitas se siguen contando juntas.' }); if (nv && nv.trim()) { c.label = nv.trim(); D.cur.stops.forEach(s => { if (s.cid === c.id) s.label = c.label; }); save(); renderDest(); renderRuta(); renderStats(); } } },
+    { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
+    v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
+    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia', danger: true, fn: () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); D.cur.stops.forEach(s => { if (s.cid === c.id) s.cid = null; }); save(); renderDest(); renderRuta(); toast(`«${c.label}» eliminado`, { undo: () => { D.clients.splice(i, 0, c); save(); renderDest(); renderRuta(); } }); } },
+  ] });
+}
+function destVisits(c) {
+  const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
+  dlg({ title: c.label, acts: [{ t: 'Cerrar', v: null }], html: `<div class="card" style="padding:2px 14px;box-shadow:none;max-height:50dvh;overflow:auto">${js.map(j => `<div class="row"><div><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</b><small>${esc(j.label)} · ${fmtKm(j.tot.road)}</small></div></div>`).join('')}</div>` });
+}
+function newDest() {
+  dlg({ title: 'Nuevo destino', acts: [{ t: 'Cancelar', cls: 'g', v: null }],
+    html: `<div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="ndQ" type="search" placeholder="Dirección o municipio" autocomplete="off" enterkeyhint="search" aria-label="Buscar dirección del destino"><div class="sugg" id="ndS" hidden></div></div>
+      <div class="brow"><button class="btn g sm" id="ndMap">${ic('pin')}Elegir en el mapa</button><button class="btn g sm" id="ndGps">${ic('loc')}Estoy aquí</button></div>`,
+    open: b => {
+      setupSearch(b.querySelector('#ndQ'), b.querySelector('#ndS'), 'dest');
+      b.querySelector('#ndMap').onclick = () => { closeLayer(null); setTimeout(() => startPick('dest-new'), 60); };
+      b.querySelector('#ndGps').onclick = () => { closeLayer(null); gps(async p => newDestAt(p.lat, p.lon, await labelFor(p.lat, p.lon, 'Mi ubicación'))); };
+      setTimeout(() => { if (!matchMedia('(pointer:coarse)').matches) b.querySelector('#ndQ').focus(); }, 80);
+    } });
+}
+async function newDestAt(lat, lon, addr) {
+  const dup = D.clients.find(c => near(c, { lat, lon }));
+  if (dup) { setView('dest'); return toast(`Ya tienes «${dup.label}» en ese sitio.`); }
+  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar' });
+  if (name == null) return;
+  const c = { id: uid(), lat, lon, label: name.trim() || addr, addr, at: today() };
+  D.clients.push(c); save(); setView('dest'); renderDest(); renderRuta();
+  toast(`Guardado: ${c.label}`, { undo: () => { D.clients = D.clients.filter(x => x !== c); save(); renderDest(); renderRuta(); } });
+}
+$('#bDestNew').onclick = newDest;
+
+/* ---- Ordenar las paradas para recorrer menos km ---- */
+async function optimizeStops() {
+  const c = D.cur, n = c.stops.length; if (!c.start || n < 3) return;
+  const before = c.stops.slice(), kmBefore = R.km;
+  let order = null;
+  if (navigator.onLine) {
+    const pts = [c.start, ...c.stops], key = pts.map(p => (+p.lon).toFixed(5) + ',' + (+p.lat).toFixed(5)).join(';');
+    const q = c.ret ? 'source=first&roundtrip=true' : 'source=first&destination=last&roundtrip=false';
+    try {
+      toast('Buscando el orden con menos km…', { ms: 9000 });
+      const d = await api('/t/' + key + (c.ret ? '' : '?end=last'), `https://router.project-osrm.org/trip/v1/driving/${key}?${q}&overview=false`);
+      if (d && d.code === 'Ok' && d.waypoints) { const idx = d.waypoints.map((w, i) => ({ i, k: w.waypoint_index })).filter(x => x.i > 0).sort((a, b) => a.k - b.k).map(x => x.i - 1); if (idx.length === n) order = idx; }
+    } catch (e) {}
+  }
+  if (!order) { // sin conexión: vecino más cercano en línea recta, empezando en el inicio
+    order = []; const left = new Set(before.map((_, i) => i)); let cur = c.start;
+    while (left.size) { let best = null, bd = 1e9; left.forEach(i => { const dd = hav(cur, before[i]); if (dd < bd) { bd = dd; best = i; } }); order.push(best); left.delete(best); cur = before[best]; }
+  }
+  if (order.every((v, i) => v === i)) return toast('El orden actual ya es el más corto.');
+  c.stops = order.map(i => before[i]); save(); renderRuta();
+  await recalc();
+  const diff = kmBefore - R.km;
+  toast(diff > 0.05 ? `Nuevo orden: ${nf1.format(diff)} km menos` : 'Paradas reordenadas', { undo: () => { c.stops = before; save(); renderRuta(); recalc(); }, ms: 7000 });
+}
+$('#bOpt').onclick = () => ask('¿Ordenar las paradas?', 'Se cambia el orden para recorrer menos kilómetros' + (D.cur.ret ? ', saliendo y volviendo a ' + D.cur.start.label : ', saliendo de ' + D.cur.start.label + ' y terminando en la última parada actual') + '. Útil para planificar; si ya hiciste la ruta, guarda el orden real.', 'Ordenar').then(ok => ok && optimizeStops());
 
 /* =================== Pintar la vista Ruta =================== */
 let startOpen = false;
@@ -327,7 +437,7 @@ function renderRuta() {
   const fb = $('#bStartFav'); fb.hidden = !D.fav || (c.start && near(D.fav, c.start)); if (D.fav) $('#bStartFavT').textContent = D.fav.label;
   // paradas
   const list = $('#stopsList');
-  $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : '';
+  $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : ''; $('#bOpt').hidden = !(c.start && c.stops.length >= 3);
   if (!c.stops.length) list.innerHTML = `<div class="empty"><b>${c.start ? 'Sin paradas todavía' : 'Primero, el punto de partida'}</b>${c.start ? 'Añade cada visita en el orden en que la haces.' : 'Después añade cada visita en orden.'}</div>`;
   else {
     list.innerHTML = c.stops.map((s, i) => `<div class="pt" data-id="${s.id}"><span class="dot">${i + 1}</span><div class="tx"><input class="nm" value="${esc(s.label)}" placeholder="Parada ${i + 1}" aria-label="Nombre de la parada ${i + 1}" enterkeyhint="done"><small data-seg="${i}"></small></div><div class="ac">${clientOf(s) ? `<span class="gb on" aria-hidden="true" style="pointer-events:none;width:26px">${ic('star')}</span>` : ''}<button class="gb mn" aria-label="Opciones de la parada ${i + 1}"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button><button class="gb dg rm" aria-label="Quitar la parada ${i + 1}">${ic('x')}</button></div></div>`).join('')
@@ -345,7 +455,7 @@ function renderRuta() {
   $('#bUndo').disabled = !c.stops.length; $('#bUndo').style.opacity = c.stops.length ? '' : '.4';
   $('#bSave').disabled = !c.start || !c.stops.length; $('.savez').classList.toggle('on', !!(c.start && c.stops.length)); $('#bEditOk').disabled = !c.start || !c.stops.length;
   if ($('#notes').value !== (c.notes || '')) $('#notes').value = c.notes || '';
-  renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute();
+  renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute(); if (view === 'dest') renderDest();
 }
 function renderRetLabel() { const s = D.cur.start; $('#retT').textContent = s ? `Volver a ${s.label}` : 'Volver al punto de partida'; }
 $('#retSw').onchange = e => { D.cur.ret = e.target.checked; save(); renderRuta(); recalc(); };

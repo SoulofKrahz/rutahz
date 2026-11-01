@@ -1,6 +1,6 @@
 // Rutahz — service worker. Si cambias iconos, manifest o index.html, sube el número de V.
-const V = 'rz-v3', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icono.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
+const V = 'rz-v4', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'icono.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 const KEEP = [V, FONTS, LIBS, TILES];
 
 self.addEventListener('install', e => {
@@ -52,7 +52,7 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET') return;
   const u = new URL(r.url);
   if (u.origin === location.origin) {
-    if (u.pathname.startsWith('/r/') || u.pathname.startsWith('/g/') || u.pathname === '/version.txt') return; // siempre por red
+    if (u.pathname.startsWith('/r/') || u.pathname.startsWith('/t/') || u.pathname.startsWith('/g/') || u.pathname === '/version.txt') return; // siempre por red
     if (r.mode === 'navigate') return e.respondWith(page(r, e));
     // El manifest depende del color con el que se instaló (lo decide _worker.js por la cookie): siempre de la red
     if (u.pathname === '/manifest.webmanifest') return e.respondWith(fetch(r).then(x => { if (x.ok) { const y = x.clone(); caches.open(V).then(c => c.put('manifest.webmanifest', y)); } return x; }).catch(() => caches.match('manifest.webmanifest')));

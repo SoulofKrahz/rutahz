@@ -14,7 +14,7 @@ def inner(ink, rc, css=False):
     return (f'<path d="{ISL}" {f("fill",ink,"--lgn")}/>'
             f'<path d="{ROUTE}" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" {f("stroke",rc,"--lgr")}/>'
             f'<circle cx="{a[0]:.1f}" cy="{a[1]:.1f}" r="2.8" {f("fill",rc,"--lgr")}/>'
-            f'<circle cx="{c[0]:.1f}" cy="{c[1]:.1f}" r="2.9" stroke-width="2.2" {f("fill",ink,"--lgn")} {f("stroke",rc,"--lgr")}/>')
+            + (f'<circle cx="{c[0]:.1f}" cy="{c[1]:.1f}" r="2.9" stroke-width="2.2" style="fill:var(--lgn,{ink});stroke:var(--lgr,{rc})"/>' if css else f'<circle cx="{c[0]:.1f}" cy="{c[1]:.1f}" r="2.9" stroke-width="2.2" fill="{ink}" stroke="{rc}"/>'))
 if __name__=='__main__':
     if sys.argv[1]=='symbol':
         print('<g id="logo64"><rect width="64" height="64" rx="15" style="fill:var(--em2)"/>'+inner('#06150f','#fff',True)+'</g>'); sys.exit()

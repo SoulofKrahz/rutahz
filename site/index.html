@@ -50,7 +50,7 @@ if(rzLocked()&&!rzInApp()&&navigator.getInstalledRelatedApps)navigator.getInstal
 <script>try{var p=JSON.parse(localStorage.getItem('rz_pf'))||{},t=p.th,d=document.documentElement;if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';d.dataset.theme=t;d.style.setProperty('--fs',p.fs||1);if(p.hc)d.classList.add('hc');if(p.rm===true||(p.rm==null&&matchMedia('(prefers-reduced-motion: reduce)').matches))d.classList.add('rm');if(p.mc)d.classList.add('mapc')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root{--bg:#f4f6fa;--card:#fff;--bd:#e1e6ee;--tx:#101827;--mu:#5a6578;--em:#047857;--em2:#059669;--tint:#e7f5ee;--onem:#fff;--dg:#c0392b;--dgt:#e5484d1f;--wn:#a8640a;--wnt:#f5a5241f;
  --sh:0 1px 2px #0f172a0d,0 14px 32px -22px #0f172a66;--r:18px;--lg:#22395a;--bbh:64px;--fs:1}
@@ -233,6 +233,16 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .savez.on{position:sticky}.savez .btn{width:100%;min-height:52px;font-size:.9375rem;box-shadow:0 10px 24px -12px var(--em)}
 .lks{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:.8125rem}.lks button{color:var(--mu);font-weight:600;padding:8px 4px;display:inline-flex;align-items:center;gap:6px}.lks button:hover{color:var(--em)}.lks button.dg:hover{color:var(--dg)}.lks svg{width:15px;height:15px}
 
+/* ===== Destinos ===== */
+.dr{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.dr:first-child{border-top:0}
+.dr .ck{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--bd);color:transparent;font:700 .75rem/1 Inter,sans-serif}
+.dr .ck.on{background:var(--em);border-color:var(--em);color:var(--onem)}
+.dr .ic0{width:34px;height:34px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--tint);color:var(--em)}
+.dr .bd{flex:1;min-width:0;text-align:left}.dr .bd b{display:block;font-weight:600;font-size:.9375rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr .bd small{display:block;font-size:.75rem;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr .in{flex:none;font-size:.6875rem;font-weight:700;color:var(--em);background:var(--tint);border-radius:99px;padding:2px 8px}
+.dsel{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:14px;background:var(--tint);font-size:.8125rem;position:sticky;top:8px;z-index:3}
+
 /* ===== Historial ===== */
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 .75rem Inter,sans-serif;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:10px 4px 0}
 .gh span{text-transform:none;letter-spacing:0;font-weight:500}
@@ -391,6 +401,8 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 7V5h11v2M9.5 5v14M7.5 19h4M14 13v-1.5h7V13M17.5 11.5V19M16 19h3"/></symbol>
 <symbol id="i-euro" viewBox="0 0 24 24"><path d="M18 6.5A7 7 0 1 0 18 17.5M4 10h10M4 14h9"/></symbol>
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9M12 17.2h.01"/></symbol>
+<symbol id="i-dest" viewBox="0 0 24 24"><path d="M12 21.5s-7-6.1-7-11.6a7 7 0 0 1 14 0c0 5.5-7 11.6-7 11.6z"/><path d="m12 6.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"/></symbol>
+<symbol id="i-sort" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h6"/></symbol>
 <symbol id="i-bigpin" viewBox="0 0 44 54"><path d="M22 52S4 34.6 4 21a18 18 0 0 1 36 0c0 13.6-18 31-18 31z" fill="currentColor" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="6.5" fill="#fff" stroke="none"/></symbol>
 </defs></svg>
 
@@ -403,7 +415,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
   <div class="ft">Bloqueo de este dispositivo para que nadie vea tus rutas de reojo. No cifra los datos ni es una contraseña de servidor.</div>
 </div>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="logo64"><rect width="64" height="64" rx="15" style="fill:var(--em2)"/><path d="M45.83 12.45L43.11 14.49L42.37 14.20L42.05 14.27L41.10 15.92L39.69 15.74L39.86 17.34L40.87 18.40L44.76 16.33L45.41 16.54L44.66 16.97L45.07 18.15L44.21 19.42L41.56 19.92L42.22 22.87L47.62 26.05L51.12 24.23L52.00 22.47L55.86 25.11L57.20 24.93L56.81 26.46L58.00 26.86L56.99 27.47L56.79 28.86L56.96 30.40L56.27 30.39L56.05 31.72L54.24 32.07L53.70 34.19L54.57 34.99L51.26 37.31L51.64 37.64L49.42 40.06L48.64 44.73L48.28 44.02L48.00 44.25L47.24 47.03L46.22 47.30L46.68 47.97L44.65 48.55L43.87 50.06L42.74 49.86L39.17 53.63L38.32 53.70L36.64 51.02L35.37 50.70L35.59 49.45L34.08 47.92L32.04 48.52L30.59 47.70L26.25 47.89L24.17 45.31L24.41 43.21L23.25 41.17L24.46 39.09L20.84 36.00L19.15 35.64L18.56 36.77L19.45 36.59L19.13 37.03L17.69 36.68L17.45 36.94L17.51 37.13L17.20 37.54L17.20 37.87L17.11 37.73L16.54 37.72L16.52 37.87L16.02 38.05L15.88 37.82L14.94 38.24L14.05 42.31L11.95 41.73L12.09 40.20L11.04 39.44L12.11 38.67L11.06 37.68L9.35 38.36L9.08 37.40L7.86 38.48L7.93 37.71L6.76 37.77L8.02 36.97L6.00 35.87L6.44 33.43L11.32 30.66L14.33 27.71L16.98 26.83L18.55 24.46L20.55 23.48L20.83 22.30L21.98 22.35L22.21 21.19L25.71 19.46L25.84 18.52L28.90 18.16L33.73 14.68L35.22 15.38L37.31 13.78L38.82 13.93L38.78 14.69L41.55 14.00L43.62 12.30L45.83 12.45Z" style="fill:var(--lgn,#06150f)"/><path d="M19.9 35.4Q22.9 28.6 31.9 26.6T45.6 35.6" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--lgr,#fff)"/><circle cx="19.9" cy="35.4" r="2.8" style="fill:var(--lgr,#fff)"/><circle cx="45.6" cy="35.6" r="2.9" stroke-width="2.2" style="fill:var(--lgn,#06150f)" style="stroke:var(--lgr,#fff)"/></g></defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="logo64"><rect width="64" height="64" rx="15" style="fill:var(--em2)"/><path d="M45.83 12.45L43.11 14.49L42.37 14.20L42.05 14.27L41.10 15.92L39.69 15.74L39.86 17.34L40.87 18.40L44.76 16.33L45.41 16.54L44.66 16.97L45.07 18.15L44.21 19.42L41.56 19.92L42.22 22.87L47.62 26.05L51.12 24.23L52.00 22.47L55.86 25.11L57.20 24.93L56.81 26.46L58.00 26.86L56.99 27.47L56.79 28.86L56.96 30.40L56.27 30.39L56.05 31.72L54.24 32.07L53.70 34.19L54.57 34.99L51.26 37.31L51.64 37.64L49.42 40.06L48.64 44.73L48.28 44.02L48.00 44.25L47.24 47.03L46.22 47.30L46.68 47.97L44.65 48.55L43.87 50.06L42.74 49.86L39.17 53.63L38.32 53.70L36.64 51.02L35.37 50.70L35.59 49.45L34.08 47.92L32.04 48.52L30.59 47.70L26.25 47.89L24.17 45.31L24.41 43.21L23.25 41.17L24.46 39.09L20.84 36.00L19.15 35.64L18.56 36.77L19.45 36.59L19.13 37.03L17.69 36.68L17.45 36.94L17.51 37.13L17.20 37.54L17.20 37.87L17.11 37.73L16.54 37.72L16.52 37.87L16.02 38.05L15.88 37.82L14.94 38.24L14.05 42.31L11.95 41.73L12.09 40.20L11.04 39.44L12.11 38.67L11.06 37.68L9.35 38.36L9.08 37.40L7.86 38.48L7.93 37.71L6.76 37.77L8.02 36.97L6.00 35.87L6.44 33.43L11.32 30.66L14.33 27.71L16.98 26.83L18.55 24.46L20.55 23.48L20.83 22.30L21.98 22.35L22.21 21.19L25.71 19.46L25.84 18.52L28.90 18.16L33.73 14.68L35.22 15.38L37.31 13.78L38.82 13.93L38.78 14.69L41.55 14.00L43.62 12.30L45.83 12.45Z" style="fill:var(--lgn,#06150f)"/><path d="M19.9 35.4Q22.9 28.6 31.9 26.6T45.6 35.6" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--lgr,#fff)"/><circle cx="19.9" cy="35.4" r="2.8" style="fill:var(--lgr,#fff)"/><circle cx="45.6" cy="35.6" r="2.9" stroke-width="2.2" style="fill:var(--lgn,#06150f);stroke:var(--lgr,#fff)"/></g></defs></svg>
 
 <header class="top"><div class="bar">
   <div class="logo" role="img" aria-label="Rutahz"><svg class="lgi" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo64"/></svg><span class="lw" aria-hidden="true">ruta<em>hz</em></span><svg class="lp" viewBox="0 0 44 24" aria-hidden="true"><path d="M2 15H9C14 15 14 8 19.5 8H24.5C30 8 30 15 35 15H39"/><circle cx="41" cy="15" r="2" /></svg></div>
@@ -431,6 +443,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
   <main class="pane" id="pane">
     <nav class="tabs" aria-label="Secciones">
       <button class="tab on" data-v="ruta"><svg class="i"><use href="#i-route"/></svg>Ruta</button>
+      <button class="tab" data-v="dest"><svg class="i"><use href="#i-dest"/></svg>Destinos</button>
       <button class="tab" data-v="hist"><svg class="i"><use href="#i-hist"/></svg>Historial</button>
       <button class="tab" data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Estadísticas</button>
       <button class="tab" data-v="ajustes"><svg class="i"><use href="#i-cog"/></svg>Ajustes</button>
@@ -466,10 +479,10 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       </div>
 
       <div class="card">
-        <div class="ch"><span><svg class="i"><use href="#i-route"/></svg>Paradas <small id="stopsN"></small></span></div>
+        <div class="ch"><span><svg class="i"><use href="#i-route"/></svg>Paradas <small id="stopsN"></small></span><button class="lnk" id="bOpt" hidden style="font-size:.8125rem;display:inline-flex;align-items:center;gap:5px"><svg class="i" style="width:15px;height:15px"><use href="#i-sort"/></svg>Ordenar</button></div>
         <div class="stops" id="stopsList"></div>
         <div class="addz">
-          <div class="field ic"><svg class="i"><use href="#i-plus"/></svg><input id="stopQ" type="search" placeholder="Añadir: cliente guardado o dirección" autocomplete="off" enterkeyhint="search" aria-label="Añadir parada"><div class="sugg" id="stopSug" hidden></div></div>
+          <div class="field ic"><svg class="i"><use href="#i-plus"/></svg><input id="stopQ" type="search" placeholder="Añadir: destino guardado o dirección" autocomplete="off" enterkeyhint="search" aria-label="Añadir parada"><div class="sugg" id="stopSug" hidden></div></div>
           <div class="brow">
             <button class="btn g sm" id="bStopPick"><svg class="i"><use href="#i-pin"/></svg>Elegir en el mapa</button>
             <button class="btn g sm" id="bStopGps"><svg class="i"><use href="#i-loc"/></svg>Aquí (GPS)</button>
@@ -489,6 +502,16 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
         <div id="saveE" hidden class="brow"><button class="btn g" id="bEditNo">Cancelar edición</button><button class="btn" id="bEditOk"><svg class="i"><use href="#i-ck"/></svg>Guardar cambios</button></div>
         <div class="lks" style="margin-top:6px"><button id="bUndo"><svg class="i"><use href="#i-undo"/></svg>Quitar la última</button><button class="dg" id="bClear"><svg class="i"><use href="#i-trash"/></svg>Vaciar ruta</button></div>
       </div>
+    </section>
+
+    <!-- ===== DESTINOS ===== -->
+    <section class="view" id="v-dest" hidden>
+      <div class="vh"><div><h1>Destinos</h1><p id="destSub">Los sitios que visitas: añádelos a la ruta en un toque</p></div><button class="btn sm" id="bDestNew"><svg class="i"><use href="#i-plus"/></svg>Nuevo</button></div>
+      <div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="dq" type="search" placeholder="Buscar en tus destinos" autocomplete="off" aria-label="Buscar en tus destinos"></div>
+      <div class="seg" id="sgDs"><button data-v="vis" class="on">Visitas</button><button data-v="az">A-Z</button><button data-v="rec">Recientes</button><button data-v="near">Cerca</button></div>
+      <div id="destBar"></div>
+      <div id="destList" class="card" style="padding:4px 14px"></div>
+      <p class="hint" style="text-align:center">Consejo: si son domicilios de pacientes, puedes usar iniciales o un código en vez del nombre completo.</p>
     </section>
 
     <!-- ===== HISTORIAL ===== -->
@@ -517,7 +540,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           <div class="row"><div><b>Ajuste sin conexión</b><small>Sin cobertura se mide en línea recta y se multiplica por este número. La jornada queda como «estimada» y se puede recalcular después.</small></div><input class="inp" id="setRf" type="number" inputmode="decimal" step="0.05" min="1" max="3" aria-label="Ajuste sin conexión"></div>
         </section>
         <section class="card set"><h2>Punto de partida habitual</h2><p>Cada jornada nueva empieza aquí. Márcalo con la estrella en «Punto de partida».</p><div id="favBox"></div></section>
-        <section class="card set"><h2>Clientes guardados</h2><p>Aparecen al añadir paradas, ordenados por visitas. Guárdalos con la estrella de cada parada.</p><div id="clList"></div></section>
+        <section class="card set"><h2>Destinos</h2><p>Tus sitios habituales: se añaden a la ruta en un toque y se cuentan las visitas.</p><button class="btn g w" id="bGoDest"><svg class="i"><use href="#i-dest"/></svg>Gestionar destinos</button></section>
         <section class="card set"><h2>Al compartir</h2><p>Lo que lleva el mensaje cuando envías una jornada por WhatsApp u otra app.</p>
           <div class="row"><div><b>Nombres de las paradas</b><small>Apagado: «Parada 1, 2…». Recomendable si las paradas llevan nombres de pacientes.</small></div><label class="sw"><input type="checkbox" id="setShN" aria-label="Incluir nombres al compartir"><span></span></label></div>
           <div class="row"><div><b>Enlace de Google Maps</b><small>Incluye las coordenadas exactas de cada parada.</small></div><label class="sw"><input type="checkbox" id="setShM" aria-label="Incluir enlace de Google Maps"><span></span></label></div>
@@ -581,8 +604,9 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 
 <nav class="bb" aria-label="Secciones">
   <button class="on" data-v="ruta"><svg class="i"><use href="#i-route"/></svg>Ruta<b id="bbN" hidden></b></button>
+  <button data-v="dest"><svg class="i"><use href="#i-dest"/></svg>Destinos</button>
   <button data-v="hist"><svg class="i"><use href="#i-hist"/></svg>Historial</button>
-  <button data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Estadísticas</button>
+  <button data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Resumen</button>
   <button data-v="ajustes"><svg class="i"><use href="#i-cog"/></svg>Ajustes</button>
 </nav>
 
@@ -590,11 +614,11 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="upd" id="banner" hidden></div>
 <div id="print"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-01-2';
+const VER = '2026-11-01-3';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -723,16 +747,16 @@ function sheet(o) {
 }
 
 /* =================== Red: proxy propio con respaldo directo =================== */
-let proxyOK = null; // null = sin comprobar; true = _worker.js responde; false = no hay proxy (Netlify, archivo local)
+let proxyOK = null, proxySkip = 0; // proxyOK false = no hay proxy (Netlify, archivo local); proxySkip = hasta cuándo no probarlo (p. ej. Cloudflare bloqueado en España durante el fútbol)
 async function api(path, direct) {
-  if (proxyOK !== false && /^https?:$/.test(location.protocol)) {
+  if (proxyOK !== false && Date.now() > proxySkip && /^https?:$/.test(location.protocol)) {
     try {
-      const r = await fetch(path, { headers: { Accept: 'application/json' } });
+      const r = await fetch(path, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout ? AbortSignal.timeout(7000) : undefined });
       if (r.headers.get('X-Rz')) { proxyOK = true; if (r.ok) return await r.json(); }
       else proxyOK = false;
-    } catch (e) { if (!navigator.onLine) throw e; }
+    } catch (e) { if (!navigator.onLine) throw e; proxySkip = Date.now() + 10 * 60000; }
   }
-  const r = await fetch(direct, { headers: { Accept: 'application/json' }, referrerPolicy: 'strict-origin-when-cross-origin' });
+  const r = await fetch(direct, { headers: { Accept: 'application/json' }, referrerPolicy: 'strict-origin-when-cross-origin', signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined });
   if (!r.ok) throw new Error('http ' + r.status);
   return r.json();
 }
@@ -898,15 +922,15 @@ $('#histPillX').onclick = closeHistView;
 
 /* ---- Elegir en el mapa (punto fijo en el centro: sin toques accidentales) ---- */
 let pick = null, pickT = null, pickTok = 0;
-function startPick(kind) {
+function startPick(kind, ref0) {
   if (viewingHist) closeHistView();
   setView('ruta');
-  pick = { kind, label: '' }; document.body.classList.add('picking');
+  pick = { kind, label: '', ref: kind === 'dest-move' ? ref0 : null }; document.body.classList.add('picking');
   $('#pick').hidden = false; $('#pickBar').hidden = false;
-  $('#pickOkT').textContent = kind === 'start' ? 'Fijar inicio aquí' : 'Añadir aquí';
+  $('#pickOkT').textContent = { start: 'Fijar inicio aquí', stop: 'Añadir aquí', 'dest-new': 'Guardar aquí', 'dest-move': 'Mover aquí' }[kind] || 'Añadir aquí';
   $('#pickT').textContent = 'Mueve el mapa hasta el punto'; $('#pickS').textContent = 'La punta del marcador marca el sitio exacto';
   if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
-  const ref = kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav);
+  const ref = ref0 || (kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav));
   setTimeout(() => { map.invalidateSize(); if (ref && map.getZoom() < 14) map.setView([ref.lat, ref.lon], 15, { animate: !RM }); else pickLookup(); }, 80);
   map.on('moveend', pickMoved);
 }
@@ -926,9 +950,12 @@ async function pickLookup() {
 function endPick() { pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
 $('#pickNo').onclick = endPick;
 $('#pickOk').onclick = () => {
-  if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa';
+  if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa', ref = pick.ref;
   endPick();
-  if (k === 'start') setStart(c.lat, c.lng, lb); else addStop(c.lat, c.lng, lb);
+  if (k === 'start') setStart(c.lat, c.lng, lb);
+  else if (k === 'dest-new') newDestAt(c.lat, c.lng, lb);
+  else if (k === 'dest-move' && ref) { const o = { lat: ref.lat, lon: ref.lon }; ref.lat = c.lat; ref.lon = c.lng; ref.addr = lb; save(); renderDest(); setView('dest'); toast(`«${ref.label}» movido`, { undo: () => { ref.lat = o.lat; ref.lon = o.lon; save(); renderDest(); } }); }
+  else addStop(c.lat, c.lng, lb);
 };
 
 /* =================== Acciones de la ruta =================== */
@@ -978,11 +1005,11 @@ function toggleClient(s) {
     const idx = D.clients.indexOf(cl); D.clients.splice(idx, 1);
     D.cur.stops.forEach(x => { if (x.cid === cl.id) x.cid = null; });
     save(); renderRuta(); renderAjustesLists();
-    toast(`«${cl.label}» ya no está en tus clientes`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
+    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
   } else {
-    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Cliente' };
+    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Destino', addr: s.label || '', at: today() };
     D.clients.push(c); s.cid = c.id; save(); renderRuta(); renderAjustesLists();
-    toast(`Guardado en clientes: ${c.label}`);
+    toast(`Guardado en tus destinos: ${c.label}`);
   }
 }
 function stopMenu(s) {
@@ -992,7 +1019,7 @@ function stopMenu(s) {
     i < a.length - 1 && { icon: 'down', label: 'Bajar', fn: () => moveStop(s, 'down') },
     { icon: 'eye', label: 'Ver en el mapa', fn: () => { setView('ruta'); if (isMob()) scrollTo({ top: 0 }); setTimeout(() => { map.invalidateSize(); map.setView([s.lat, s.lon], 16, { animate: !RM }); }, 60); } },
     { icon: 'edit', label: 'Cambiar nombre', fn: async () => { const v = await prompt2('Nombre de la parada', s.label); if (v != null && v.trim()) { s.label = v.trim(); save(); renderRuta(); drawMarkers(); } } },
-    { icon: 'star', label: isCl ? 'Quitar de clientes guardados' : 'Guardar como cliente', sub: isCl ? '' : 'Para añadirlo en un toque otro día', fn: () => toggleClient(s) },
+    { icon: 'dest', label: isCl ? 'Quitar de mis destinos' : 'Guardar en mis destinos', sub: isCl ? '' : 'Para añadirlo en un toque otro día', fn: () => toggleClient(s) },
     { icon: 'trash', label: 'Quitar parada', danger: true, fn: () => removeStop(s) },
   ] });
 }
@@ -1004,10 +1031,10 @@ function setupSearch(inp, box, kind) {
   function paint(live, state) {
     const q = norm(inp.value); items = [];
     let h = '';
-    if (kind === 'stop') {
+    if (kind === 'stop' && inp.id === 'stopQ') {
       const cnt = visitCounts();
       const cl = D.clients.filter(c => norm(c.label).includes(q)).sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0)).slice(0, 5);
-      if (cl.length) { h += '<h6>Tus clientes</h6>'; cl.forEach(c => { items.push({ lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); h += `<button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Cliente guardado'}</small></div></button>`; }); }
+      if (cl.length) { h += '<h6>Tus destinos</h6>'; cl.forEach(c => { items.push({ lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); h += `<button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Destino guardado'}</small></div></button>`; }); }
     }
     if (kind === 'start' && D.fav && norm(D.fav.label).includes(q)) { items.push({ ...D.fav }); h += `<h6>Habitual</h6><button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(D.fav.label)}</b><small>Tu punto de partida habitual</small></div></button>`; }
     const tw = TOWNS.filter(x => norm(x[0]).startsWith(q) || (q.length > 2 && norm(x[0]).includes(q))).slice(0, 3);
@@ -1015,7 +1042,7 @@ function setupSearch(inp, box, kind) {
     if (live && live.length) { h += '<h6>Direcciones</h6>'; live.forEach(r => { const p = placeLabel(r); items.push({ lat: +r.lat, lon: +r.lon, label: p.label }); h += `<button data-i="${items.length - 1}">${ic('pin')}<div><b>${esc(p.main)}</b><small>${esc(p.sub)}</small></div></button>`; }); }
     if (state === 'busy') h += '<p class="ld">Buscando direcciones…</p>';
     else if (state === 'none' && !items.length) h += '<p>Sin resultados. Prueba con otra forma de escribirlo o usa «Elegir en el mapa».</p>';
-    else if (state === 'off') h += '<p>Sin conexión: solo clientes guardados y municipios.</p>';
+    else if (state === 'off') h += '<p>Sin conexión: solo tus destinos y los municipios.</p>';
     else if (state === 'err') h += '<p>No se ha podido buscar ahora. Usa «Elegir en el mapa».</p>';
     box.innerHTML = h; box.hidden = !h;
     box.querySelectorAll('button[data-i]').forEach(b => b.onmousedown = e => e.preventDefault());
@@ -1024,7 +1051,7 @@ function setupSearch(inp, box, kind) {
   }
   function choose(it) {
     if (!it) return; inp.value = ''; close(); inp.blur();
-    if (kind === 'start') setStart(it.lat, it.lon, it.label); else addStop(it.lat, it.lon, it.label, it.cid);
+    if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
     try { const r = await geoSearch(q, 5); if (my !== tok) return; paint(r, r.length ? '' : 'none'); }
@@ -1047,7 +1074,7 @@ function setupSearch(inp, box, kind) {
 setupSearch($('#startQ'), $('#startSug'), 'start');
 setupSearch($('#stopQ'), $('#stopSug'), 'stop');
 
-/* =================== Clientes y visitas =================== */
+/* =================== Destinos y visitas =================== */
 function clientOf(s) { return (s.cid && D.clients.find(c => c.id === s.cid)) || D.clients.find(c => near(c, s)) || null; }
 function visitCounts() {
   const m = new Map();
@@ -1057,16 +1084,17 @@ function visitCounts() {
 let multi = false, sel = [], showAllCl = false;
 function renderClients() {
   const box = $('#clientsBox');
-  if (!D.clients.length) { box.innerHTML = D.cur.stops.length ? `<p class="hint">Consejo: guarda tus clientes habituales con ${'⋯'} › «Guardar como cliente» y los añadirás en un toque.</p>` : ''; return; }
+  if (!D.clients.length) { box.innerHTML = `<p class="hint">Guarda tus sitios habituales en <button class="lnk" id="goDest">Destinos</button> (o con ⋯ › «Guardar en mis destinos» en cada parada) y los añadirás en un toque.</p>`; $('#goDest').onclick = () => setView('dest'); return; }
   const cnt = visitCounts(), list = D.clients.slice().sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0) || a.label.localeCompare(b.label, 'es'));
   const N = 12, shown = showAllCl || multi ? list : list.slice(0, N);
-  let h = `<div class="clh"><h3>Clientes guardados</h3><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button></div><div class="cls" style="margin-top:8px">`;
+  let h = `<div class="clh"><h3>Tus destinos</h3><span><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button><button id="clGo" style="margin-left:8px">Todos</button></span></div><div class="cls" style="margin-top:8px">`;
   shown.forEach(c => { const si = sel.indexOf(c.id); h += `<button class="cl ${si >= 0 ? 'on' : ''}" data-id="${c.id}">${si >= 0 ? `<b>${si + 1}</b>` : ''}<span>${esc(c.label)}</span>${cnt.get(c.id) ? `<i>${cnt.get(c.id)}</i>` : ''}</button>`; });
-  if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>Ver todos (${list.length})</span></button>`;
+  if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>+${list.length - N} más</span></button>`;
   h += '</div>';
-  if (multi) h += `<div class="selb" style="margin-top:10px"><span>${sel.length ? sel.length + ' en este orden' : 'Toca los clientes en el orden de la visita'}</span><button class="btn sm" id="clAdd" ${sel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></div>`;
+  if (multi) h += `<div class="selb" style="margin-top:10px"><span>${sel.length ? sel.length + ' en este orden' : 'Tócalos en el orden de la visita'}</span><button class="btn sm" id="clAdd" ${sel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></div>`;
   box.innerHTML = h;
   $('#clMulti').onclick = () => { multi = !multi; sel = []; renderClients(); };
+  $('#clGo').onclick = () => setView('dest');
   const all = $('#clAll'); if (all) all.onclick = () => { showAllCl = true; renderClients(); };
   box.querySelectorAll('.cl[data-id]').forEach(b => b.onclick = () => {
     const c = D.clients.find(x => x.id === b.dataset.id); if (!c) return;
@@ -1080,6 +1108,112 @@ function renderClients() {
     toast(`${n} parada${n > 1 ? 's' : ''} añadida${n > 1 ? 's' : ''}`);
   };
 }
+
+/* ---- Vista Destinos ---- */
+let dSort = 'vis', dSel = null; // dSel: null = sin selección; array = ids en orden
+function visitInfo() {
+  const m = new Map();
+  D.hist.forEach(j => j.stops.forEach(s => { const c = clientOf(s); if (!c) return; const r = m.get(c.id) || { n: 0, last: '' }; r.n++; if ((j.iso || '') > r.last) r.last = j.iso || ''; m.set(c.id, r); }));
+  return m;
+}
+function renderDest() {
+  const el = $('#destList'); if (!el) return;
+  const info = visitInfo(), q = norm($('#dq').value);
+  const ref = D.cur.stops[D.cur.stops.length - 1] || D.cur.start || D.fav;
+  let list = D.clients.filter(c => !q || norm(c.label).includes(q) || norm(c.addr).includes(q));
+  const vi = c => info.get(c.id) || { n: 0, last: '' };
+  if (dSort === 'vis') list.sort((a, b) => vi(b).n - vi(a).n || a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'az') list.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'rec') list.sort((a, b) => (vi(b).last || b.at || '').localeCompare(vi(a).last || a.at || '') || a.label.localeCompare(b.label, 'es'));
+  else if (dSort === 'near' && ref) list.sort((a, b) => hav(ref, a) - hav(ref, b));
+  $('#destSub').textContent = D.clients.length ? `${D.clients.length} destino${D.clients.length > 1 ? 's' : ''}${dSort === 'near' && ref ? ' · por cercanía a «' + ref.label + '»' : ''}` : 'Los sitios que visitas: añádelos a la ruta en un toque';
+  $$('#sgDs button').forEach(b => b.classList.toggle('on', b.dataset.v === dSort));
+  const inRoute = new Set(D.cur.stops.map(s => clientOf(s)?.id).filter(Boolean));
+  $('#destBar').innerHTML = dSel ? `<div class="dsel"><span>${dSel.length ? dSel.length + ' para la ruta, en este orden' : 'Toca los destinos en el orden de la visita'}</span><span class="brow" style="flex-wrap:nowrap"><button class="btn g sm" id="dsNo">Cancelar</button><button class="btn sm" id="dsOk" ${dSel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></span></div>`
+    : (D.clients.length > 1 ? `<div style="display:flex;justify-content:flex-end"><button class="lnk" id="dsGo" style="font-size:.8125rem">Planificar: elegir varios</button></div>` : '');
+  if (!D.clients.length) el.innerHTML = `<div class="empty"><b>Sin destinos todavía</b>Pulsa «Nuevo» para guardar un sitio, o guarda una parada desde su menú ⋯.</div>`;
+  else if (!list.length) el.innerHTML = `<div class="empty"><b>Sin resultados</b>Prueba con otro nombre.</div>`;
+  else el.innerHTML = list.map(c => { const v = vi(c), si = dSel ? dSel.indexOf(c.id) : -1, km = dSort === 'near' && ref ? nf1.format(hav(ref, c)) + ' km · ' : '';
+    return `<div class="dr" data-id="${esc(c.id)}">${dSel ? `<button class="ck ${si >= 0 ? 'on' : ''}" aria-label="Elegir ${esc(c.label)}">${si >= 0 ? si + 1 : ''}</button>` : `<span class="ic0">${ic('dest')}</span>`}<button class="bd" aria-label="Opciones de ${esc(c.label)}"><b>${esc(c.label)}</b><small>${km}${v.n ? v.n + ' visita' + (v.n > 1 ? 's' : '') + ' · última ' + fmtDateS(v.last) : 'Sin visitas guardadas'}${c.addr && c.addr !== c.label ? ' · ' + esc(c.addr) : ''}</small></button>${inRoute.has(c.id) ? '<span class="in">en la ruta</span>' : ''}${dSel ? '' : `<button class="gb ad" aria-label="Añadir ${esc(c.label)} a la ruta">${ic('plus')}</button>`}</div>`; }).join('');
+  el.querySelectorAll('.dr').forEach(r => {
+    const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
+    const tog = () => { const i = dSel.indexOf(c.id); i >= 0 ? dSel.splice(i, 1) : dSel.push(c.id); renderDest(); };
+    if (dSel) { r.querySelector('.ck').onclick = tog; r.querySelector('.bd').onclick = tog; }
+    else { r.querySelector('.bd').onclick = () => destMenu(c); r.querySelector('.ad').onclick = () => addStop(c.lat, c.lon, c.label, c.id); }
+  });
+  const g = $('#dsGo'); if (g) g.onclick = () => { dSel = []; renderDest(); };
+  const n = $('#dsNo'); if (n) n.onclick = () => { dSel = null; renderDest(); };
+  const o = $('#dsOk'); if (o) o.onclick = () => {
+    if (!D.cur.start) return toast('Primero elige el punto de partida en «Ruta».');
+    const k = dSel.length; dSel.forEach(id => { const c = D.clients.find(x => x.id === id); if (c) D.cur.stops.push({ id: uid(), lat: c.lat, lon: c.lon, label: c.label, cid: c.id }); });
+    dSel = null; save(); renderRuta(); recalc(); setView('ruta'); setTimeout(fitCur, 100);
+    toast(`${k} parada${k > 1 ? 's' : ''} añadida${k > 1 ? 's' : ''} a la ruta`);
+  };
+}
+$('#dq').addEventListener('input', renderDest);
+$$('#sgDs button').forEach(b => b.onclick = () => { dSort = b.dataset.v; if (dSort === 'near' && !(D.cur.start || D.fav)) toast('Para ordenar por cercanía, elige antes un punto de partida.'); renderDest(); });
+function destMenu(c) {
+  const v = visitInfo().get(c.id) || { n: 0, last: '' };
+  sheet({ title: c.label, sub: v.n ? `${v.n} visita${v.n > 1 ? 's' : ''} · última el ${fmtDate(v.last, { day: 'numeric', month: 'long' })}` : (c.addr || 'Sin visitas guardadas'), items: [
+    { icon: 'plus', label: 'Añadir a la ruta de hoy', fn: () => addStop(c.lat, c.lon, c.label, c.id) },
+    { icon: 'eye', label: 'Ver en el mapa', fn: () => { setView('ruta'); if (isMob()) scrollTo({ top: 0 }); setTimeout(() => { map.invalidateSize(); map.setView([c.lat, c.lon], 16, { animate: !RM }); L.popup({ closeButton: false, offset: [0, -6] }).setLatLng([c.lat, c.lon]).setContent(esc(c.label)).openOn(map); }, 80); } },
+    { icon: 'edit', label: 'Cambiar nombre', fn: async () => { const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia también en la ruta de hoy. El historial guarda el nombre de cada día, pero las visitas se siguen contando juntas.' }); if (nv && nv.trim()) { c.label = nv.trim(); D.cur.stops.forEach(s => { if (s.cid === c.id) s.label = c.label; }); save(); renderDest(); renderRuta(); renderStats(); } } },
+    { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
+    v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
+    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia', danger: true, fn: () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); D.cur.stops.forEach(s => { if (s.cid === c.id) s.cid = null; }); save(); renderDest(); renderRuta(); toast(`«${c.label}» eliminado`, { undo: () => { D.clients.splice(i, 0, c); save(); renderDest(); renderRuta(); } }); } },
+  ] });
+}
+function destVisits(c) {
+  const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
+  dlg({ title: c.label, acts: [{ t: 'Cerrar', v: null }], html: `<div class="card" style="padding:2px 14px;box-shadow:none;max-height:50dvh;overflow:auto">${js.map(j => `<div class="row"><div><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</b><small>${esc(j.label)} · ${fmtKm(j.tot.road)}</small></div></div>`).join('')}</div>` });
+}
+function newDest() {
+  dlg({ title: 'Nuevo destino', acts: [{ t: 'Cancelar', cls: 'g', v: null }],
+    html: `<div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="ndQ" type="search" placeholder="Dirección o municipio" autocomplete="off" enterkeyhint="search" aria-label="Buscar dirección del destino"><div class="sugg" id="ndS" hidden></div></div>
+      <div class="brow"><button class="btn g sm" id="ndMap">${ic('pin')}Elegir en el mapa</button><button class="btn g sm" id="ndGps">${ic('loc')}Estoy aquí</button></div>`,
+    open: b => {
+      setupSearch(b.querySelector('#ndQ'), b.querySelector('#ndS'), 'dest');
+      b.querySelector('#ndMap').onclick = () => { closeLayer(null); setTimeout(() => startPick('dest-new'), 60); };
+      b.querySelector('#ndGps').onclick = () => { closeLayer(null); gps(async p => newDestAt(p.lat, p.lon, await labelFor(p.lat, p.lon, 'Mi ubicación'))); };
+      setTimeout(() => { if (!matchMedia('(pointer:coarse)').matches) b.querySelector('#ndQ').focus(); }, 80);
+    } });
+}
+async function newDestAt(lat, lon, addr) {
+  const dup = D.clients.find(c => near(c, { lat, lon }));
+  if (dup) { setView('dest'); return toast(`Ya tienes «${dup.label}» en ese sitio.`); }
+  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar' });
+  if (name == null) return;
+  const c = { id: uid(), lat, lon, label: name.trim() || addr, addr, at: today() };
+  D.clients.push(c); save(); setView('dest'); renderDest(); renderRuta();
+  toast(`Guardado: ${c.label}`, { undo: () => { D.clients = D.clients.filter(x => x !== c); save(); renderDest(); renderRuta(); } });
+}
+$('#bDestNew').onclick = newDest;
+
+/* ---- Ordenar las paradas para recorrer menos km ---- */
+async function optimizeStops() {
+  const c = D.cur, n = c.stops.length; if (!c.start || n < 3) return;
+  const before = c.stops.slice(), kmBefore = R.km;
+  let order = null;
+  if (navigator.onLine) {
+    const pts = [c.start, ...c.stops], key = pts.map(p => (+p.lon).toFixed(5) + ',' + (+p.lat).toFixed(5)).join(';');
+    const q = c.ret ? 'source=first&roundtrip=true' : 'source=first&destination=last&roundtrip=false';
+    try {
+      toast('Buscando el orden con menos km…', { ms: 9000 });
+      const d = await api('/t/' + key + (c.ret ? '' : '?end=last'), `https://router.project-osrm.org/trip/v1/driving/${key}?${q}&overview=false`);
+      if (d && d.code === 'Ok' && d.waypoints) { const idx = d.waypoints.map((w, i) => ({ i, k: w.waypoint_index })).filter(x => x.i > 0).sort((a, b) => a.k - b.k).map(x => x.i - 1); if (idx.length === n) order = idx; }
+    } catch (e) {}
+  }
+  if (!order) { // sin conexión: vecino más cercano en línea recta, empezando en el inicio
+    order = []; const left = new Set(before.map((_, i) => i)); let cur = c.start;
+    while (left.size) { let best = null, bd = 1e9; left.forEach(i => { const dd = hav(cur, before[i]); if (dd < bd) { bd = dd; best = i; } }); order.push(best); left.delete(best); cur = before[best]; }
+  }
+  if (order.every((v, i) => v === i)) return toast('El orden actual ya es el más corto.');
+  c.stops = order.map(i => before[i]); save(); renderRuta();
+  await recalc();
+  const diff = kmBefore - R.km;
+  toast(diff > 0.05 ? `Nuevo orden: ${nf1.format(diff)} km menos` : 'Paradas reordenadas', { undo: () => { c.stops = before; save(); renderRuta(); recalc(); }, ms: 7000 });
+}
+$('#bOpt').onclick = () => ask('¿Ordenar las paradas?', 'Se cambia el orden para recorrer menos kilómetros' + (D.cur.ret ? ', saliendo y volviendo a ' + D.cur.start.label : ', saliendo de ' + D.cur.start.label + ' y terminando en la última parada actual') + '. Útil para planificar; si ya hiciste la ruta, guarda el orden real.', 'Ordenar').then(ok => ok && optimizeStops());
 
 /* =================== Pintar la vista Ruta =================== */
 let startOpen = false;
@@ -1127,7 +1261,7 @@ function renderRuta() {
   const fb = $('#bStartFav'); fb.hidden = !D.fav || (c.start && near(D.fav, c.start)); if (D.fav) $('#bStartFavT').textContent = D.fav.label;
   // paradas
   const list = $('#stopsList');
-  $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : '';
+  $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : ''; $('#bOpt').hidden = !(c.start && c.stops.length >= 3);
   if (!c.stops.length) list.innerHTML = `<div class="empty"><b>${c.start ? 'Sin paradas todavía' : 'Primero, el punto de partida'}</b>${c.start ? 'Añade cada visita en el orden en que la haces.' : 'Después añade cada visita en orden.'}</div>`;
   else {
     list.innerHTML = c.stops.map((s, i) => `<div class="pt" data-id="${s.id}"><span class="dot">${i + 1}</span><div class="tx"><input class="nm" value="${esc(s.label)}" placeholder="Parada ${i + 1}" aria-label="Nombre de la parada ${i + 1}" enterkeyhint="done"><small data-seg="${i}"></small></div><div class="ac">${clientOf(s) ? `<span class="gb on" aria-hidden="true" style="pointer-events:none;width:26px">${ic('star')}</span>` : ''}<button class="gb mn" aria-label="Opciones de la parada ${i + 1}"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button><button class="gb dg rm" aria-label="Quitar la parada ${i + 1}">${ic('x')}</button></div></div>`).join('')
@@ -1145,7 +1279,7 @@ function renderRuta() {
   $('#bUndo').disabled = !c.stops.length; $('#bUndo').style.opacity = c.stops.length ? '' : '.4';
   $('#bSave').disabled = !c.start || !c.stops.length; $('.savez').classList.toggle('on', !!(c.start && c.stops.length)); $('#bEditOk').disabled = !c.start || !c.stops.length;
   if ($('#notes').value !== (c.notes || '')) $('#notes').value = c.notes || '';
-  renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute();
+  renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute(); if (view === 'dest') renderDest();
 }
 function renderRetLabel() { const s = D.cur.start; $('#retT').textContent = s ? `Volver a ${s.label}` : 'Volver al punto de partida'; }
 $('#retSw').onchange = e => { D.cur.ret = e.target.checked; save(); renderRuta(); recalc(); };
@@ -1386,7 +1520,7 @@ function renderStats() {
       <div><b>${fmtEur(sum(H, j => j.tot.cost))}</b><span>Coste estimado</span></div>
       <div><b>${fmtDur(sum(H, j => j.tot.dur))}</b><span>Al volante</span></div>
     </div></div>
-    <div class="card"><div class="ch"><span>${ic('star')}Clientes más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<div>${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)}</div>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
+    <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<div>${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)}</div>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
   box.querySelectorAll('.rk button').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
 }
 
@@ -1499,7 +1633,7 @@ function renderAjustesLists() {
     $('#favRn').onclick = async () => { const v = await prompt2('Nombre del punto de partida habitual', D.fav.label); if (v && v.trim()) { const wasCur = D.cur.start && near(D.cur.start, D.fav); D.fav.label = v.trim(); if (wasCur) D.cur.start.label = D.fav.label; save(); renderAjustesLists(); renderRuta(); } };
     $('#favRm').onclick = () => { const old = D.fav; D.fav = null; save(); renderAjustesLists(); renderRuta(); toast('Punto habitual quitado', { undo: () => { D.fav = old; save(); renderAjustesLists(); renderRuta(); } }); };
   }
-  const cl = $('#clList'), cnt = visitCounts();
+  const cl = $('#clList'); if (!cl) return; const cnt = visitCounts();
   cl.innerHTML = D.clients.length ? D.clients.slice().sort((a, b) => a.label.localeCompare(b.label, 'es')).map(c => `<div class="row" data-id="${c.id}"><div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Sin visitas guardadas'}</small></div><button class="gb rn" aria-label="Cambiar nombre de ${esc(c.label)}">${ic('edit')}</button><button class="gb dg rm" aria-label="Quitar ${esc(c.label)}">${ic('trash')}</button></div>`).join('') : '<p class="hint">Todavía no has guardado ninguno.</p>';
   cl.querySelectorAll('.row').forEach(r => {
     const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
@@ -1712,7 +1846,7 @@ function showHelp() {
   dlg({ title: 'Cómo funciona', acts: [{ t: 'Entendido', v: null }],
     html: `<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:.9rem;line-height:1.45">
       <li><b>Punto de partida.</b> Busca tu oficina o elígela en el mapa y toca la ${ic('star')} estrella: cada jornada nueva empezará ahí.</li>
-      <li><b>Paradas.</b> Añade cada visita en orden: escribiendo el cliente o la dirección, con «Elegir en el mapa» o con el GPS.</li>
+      <li><b>Paradas.</b> Añade cada visita en orden: escribiendo un destino guardado o la dirección, con «Elegir en el mapa» o con el GPS. En <b>Destinos</b> guardas tus sitios habituales.</li>
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
       <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
@@ -1738,7 +1872,7 @@ function maybeBanner() {
     if (installEvt) return banner('in', 'inst', 'Instala Rutahz', 'Se abre desde el icono y el navegador protege mejor tus datos.', [{ t: 'Ahora no', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Instalar', fn: doInstall }]);
     if (isIOS() && D.hist.length >= 1) return banner('in', 'inst', 'Instálala en tu iPhone', 'Toca Compartir y «Añadir a pantalla de inicio». Así Safari no borra tus datos si pasas una semana sin abrirla.', [{ t: 'Más tarde', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Entendido', fn: () => { M.iz = now + 30 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }]);
   }
-  if (D.hist.length && (M.bz || 0) < now && (!M.lb || daysBetween(M.lb, today()) > 14)) {
+  if ((D.hist.length >= 3 || (D.hist.length && M.fu && daysBetween(M.fu, today()) >= 3)) && (M.bz || 0) < now && (!M.lb || daysBetween(M.lb, today()) > 14)) {
     const d = M.lb ? daysBetween(M.lb, today()) : null;
     return banner('bk', 'shield', 'Haz una copia de seguridad', d == null ? `Tienes ${D.hist.length} jornada${D.hist.length > 1 ? 's' : ''} y ninguna copia.` : `La última fue hace ${d} días.`, [{ t: 'Más tarde', cls: 'g', fn: () => { M.bz = now + 3 * 864e5; saveM(); } }, { t: 'Hacer copia', icon: 'share', fn: () => doBackup(true) }]);
   }
@@ -1778,11 +1912,12 @@ function setView(v) {
   if (document.body.classList.contains('busy') && !routing) document.body.classList.remove('busy');
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
   $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
+  if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'dest') renderDest(); else if (dSel) dSel = null; if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
   if (isMob()) scrollTo({ top: 0 }); else $('#pane').scrollTop = 0;
   if (v === 'ruta') setTimeout(() => map.invalidateSize(), 30);
 }
 $$('.tab,.bb button').forEach(b => b.onclick = () => setView(b.dataset.v));
+$('#bGoDest').onclick = () => setView('dest');
 function renderAll() { renderRuta(); renderHist(); renderStats(); renderChip(); renderAjustesLists(); }
 function netPaint() { $('#offB').hidden = navigator.onLine; }
 addEventListener('online', () => { netPaint(); if (R.src === 'straight') { toast('Conexión recuperada: recalculando por carretera…'); routeCache.clear(); recalc(); } });
