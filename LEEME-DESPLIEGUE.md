@@ -1,6 +1,6 @@
 # Rutahz 2.0 — Despliegue en Cloudflare Pages
 
-Versión: `2026-11-01-0` · Service worker: `rz-v1`
+Versión: `2026-11-01-1` · Service worker: `rz-v2`
 
 ## Antes de nada: pasar los datos desde Netlify
 
