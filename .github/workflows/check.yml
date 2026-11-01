@@ -12,5 +12,6 @@ jobs:
             echo "== $u"; curl -sS -m 20 -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s · IP %{remote_ip}\n' "$u" || echo "FALLO curl $?"; head -c 200 /tmp/b 2>/dev/null; echo
           done
           echo "== DNS"; getent hosts rutahz.pages.dev || echo "sin DNS"
+          echo "== SOA (caché de «no existe»)"; dig +noall +answer SOA pages.dev @1.1.1.1; dig +noall +answer A rutahz.pages.dev @1.1.1.1; dig +noall +answer A rutahz.pages.dev @8.8.8.8
           echo "== proxy con origen propio"; curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" || echo FALLO; head -c 200 /tmp/b; echo
           curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/g/search?q=Inca%2C%20Mallorca&limit=1" || echo FALLO; head -c 200 /tmp/b; echo
