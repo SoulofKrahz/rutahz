@@ -28,7 +28,7 @@ window.rzAcc=function(h,s){
  var bgD=N('#0d1523'),cdD=N('#152033'),bdD=N('#243249'),txD=N('#e8eef7'),muD=N('#98a8bd');
  var ld=58;while(ld<90&&cr(C(h,s*.75,ld),cdD)<6.5)ld++;var emD=C(h,s*.75,ld);
  var l2d=Math.max(ld-12,36);var e2D=C(h,s*.8,l2d),onD=C(h,.6,6);
- var K=N('#06150f'),lt=cr(e2,K)<2.6,ltD=cr(e2D,K)<2.6,lv=function(f,c){return';--lgn:'+(f?'#fff':'#06150f')+';--lgh:'+(f?hx(c):'transparent')};
+ var K=N('#06150f'),lt=cr(e2,K)<2.6,ltD=cr(e2D,K)<2.6,lv=function(f,c){return';--lgn:'+(f?'#fff':'#06150f')+';--lgh:'+(f?hx(c):'transparent')+';--lgr:'+(f?hx(c):'#fff')};
  var css='html:root{--bg:'+hx(bg)+';--card:#fff;--bd:'+hx(bd)+';--tx:'+hx(tx)+';--mu:'+hx(mu)+';--em:'+hx(em)+';--em2:'+hx(e2)+';--tint:'+hx(tint)+';--onem:#fff'+lv(lt,e2)+'}'
   +'html[data-theme=dark]{--bg:'+hx(bgD)+';--card:'+hx(cdD)+';--bd:'+hx(bdD)+';--tx:'+hx(txD)+';--mu:'+hx(muD)+';--em:'+hx(emD)+';--em2:'+hx(e2D)+';--tint:hsla('+Math.round(h)+','+Math.round(s*80)+'%,48%,.14);--onem:'+hx(onD)+lv(ltD,e2D)+'}';
  return{css:css,barL:hx(em),barD:hx(bgD),fav:hx(e2),lt:lt}};
