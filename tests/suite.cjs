@@ -277,6 +277,30 @@ test('jornadas exportadas', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6g · iPhone: en Safari, sin datos, pide instalar antes del PIN; instalada, recuerda restaurar dentro */
+test('iPhone: instalar antes de empezar', async ({ browser, base }) => {
+  let ctx = await L.context(browser, base, { device: devices['iPhone 13'], iosSafari: true }), p = await L.page(ctx);
+  await p.goto(base); await p.waitForTimeout(500);
+  if (process.env.SHOT) await p.screenshot({ path: process.env.SHOT });
+  ok(await p.isVisible('#iosGate'), 'en Safari de iPhone, la primera vez, explica que hay que instalarla antes');
+  await p.click('#igSkip'); await L.unlock(p, { create: true, dismiss: false });
+  ok(!(await p.isVisible('#iosGate')), '«Seguir en Safari» deja usarla igualmente');
+  await p.reload(); await p.waitForTimeout(400);
+  ok(!(await p.isVisible('#iosGate')), 'y no vuelve a salir');
+  await ctx.close();
+  ctx = await L.context(browser, base, { device: devices['iPhone 13'], iosSafari: true, seed: { rz_data: data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] }), rz_meta: meta(VER) } }); p = await L.page(ctx);
+  await p.goto(base); await p.waitForTimeout(400);
+  ok(!(await p.isVisible('#iosGate')), 'si ya tiene datos en Safari no la bloquea');
+  await ctx.close();
+  ctx = await L.context(browser, base, { device: devices['iPhone 13'] }); p = await L.page(ctx);
+  await p.goto(base); await p.waitForTimeout(300);
+  ok(!(await p.isVisible('#iosGate')), 'en la app instalada no sale');
+  await L.unlock(p, { create: true, dismiss: false }); await p.waitForSelector('.dlg');
+  ok((await p.textContent('.dlg')).includes('Safari'), 'y la bienvenida recuerda restaurar la copia otra vez dentro');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

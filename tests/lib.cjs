@@ -40,6 +40,8 @@ async function context(browser, base, o = {}) {
   const ctx = await browser.newContext({ ...(o.device || devices['iPhone 13']), serviceWorkers: o.sw ? 'allow' : 'block', locale: 'es-ES', timezoneId: 'Europe/Madrid', acceptDownloads: true });
   const leg = o.leg || (() => ({ distance: 10000, duration: 600 }));
   ctx.calls = { r: 0, t: 0 };
+  // En iPhone, salvo que la prueba quiera Safari, se simula la app instalada (en Safari sale el aviso de instalar antes)
+  if (/iPhone|iPad/.test((o.device || devices['iPhone 13']).userAgent || '') && !o.iosSafari) await ctx.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { get: () => true }); });
   await ctx.route(/fonts\.(googleapis|gstatic)/, r => r.fulfill({ status: 204 }));
   await ctx.route(/arcgisonline/, r => r.fulfill({ contentType: 'image/png', body: PNG, headers: { 'access-control-allow-origin': '*' } }));
   await ctx.route(base + 'r/**', r => {

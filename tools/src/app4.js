@@ -259,6 +259,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-15', d: '2026-11-02', t: 'iPhone: instalar sin repetir pasos', i: [
+    'Al abrirla en Safari por primera vez, Rutahz explica que hay que instalarla antes de crear el PIN y restaurar la copia: en iPhone, Safari y la app instalada no comparten datos.',
+    'Si ya tienes datos en Safari, el aviso de instalar te ofrece guardar antes la copia para restaurarla dentro de la app.'] },
   { v: '2026-11-02-14', d: '2026-11-02', t: 'Qué jornadas ya has exportado', i: [
     'Al sacar un Excel o un informe, cada jornada queda marcada como <b>exportada</b> con su fecha. En el Historial lo ves en cada jornada y en cada mes.',
     'Filtro <b>Sin exportar</b> en el Historial, y en el informe la opción <b>Solo las pendientes</b>.',
@@ -338,7 +341,7 @@ $('#bNews').onclick = () => showNews();
 /* =================== Primera vez y ayuda =================== */
 function onFirstRun() {
   M.fu = M.fu || today(); M.sv = VER; saveM();
-  dlg({ title: 'Bienvenido a Rutahz 2.0', text: '¿Usabas la versión anterior? Esta vive en otra dirección web, así que tus rutas no aparecen solas: restaura la copia que guardaste allí con «Guardar copia».', acts: [{ t: 'Empezar de cero', cls: 'g', v: 'new' }, { t: 'Restaurar copia', v: 'imp', icon: 'ul' }] })
+  dlg({ title: 'Bienvenido a Rutahz 2.0', text: '¿Usabas la versión anterior? Esta vive en otra dirección web, así que tus rutas no aparecen solas: restaura la copia que guardaste allí.' + (isIOS() && rzInApp() ? '\n\nSi ya la restauraste en Safari, hazlo otra vez aquí: en iPhone la app instalada guarda sus datos aparte. El archivo sigue en Archivos (o en WhatsApp, si te la enviaste).' : ''), acts: [{ t: 'Empezar de cero', cls: 'g', v: 'new' }, { t: 'Restaurar copia', v: 'imp', icon: 'ul' }] })
     .then(v => { if (v === 'imp') $('#bkIn').click(); else showHelp(); });
 }
 function showHelp() {
@@ -370,7 +373,7 @@ function maybeBanner() {
   if (newVer) return banner('up', 'refresh', 'Hay una versión nueva de Rutahz', 'Se instala al momento y no toca tus datos.', [{ t: 'Más tarde', cls: 'g' }, { t: 'Actualizar', fn: applyUpdate }]);
   if (!rzInApp() && (M.iz || 0) < now && (M.in || 0) < 3) {
     if (installEvt) return banner('in', 'inst', 'Instala Rutahz', 'Se abre desde el icono y el navegador protege mejor tus datos.', [{ t: 'Ahora no', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Instalar', fn: doInstall }]);
-    if (isIOS() && D.hist.length >= 1) return banner('in', 'inst', 'Instálala en tu iPhone', 'Toca Compartir y «Añadir a pantalla de inicio». Así Safari no borra tus datos si pasas una semana sin abrirla.', [{ t: 'Más tarde', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Entendido', fn: () => { M.iz = now + 30 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }]);
+    if (isIOS() && D.hist.length >= 1) return banner('in', 'inst', 'Instálala en tu iPhone', 'Antes, guarda una copia: la app instalada empieza vacía y tendrás que restaurarla dentro. Luego Compartir › «Añadir a pantalla de inicio».', [{ t: 'Más tarde', cls: 'g', fn: () => { M.iz = now + 7 * 864e5; M.in = (M.in || 0) + 1; saveM(); } }, { t: 'Guardar copia', icon: 'share', fn: () => { M.iz = now + 30 * 864e5; M.in = (M.in || 0) + 1; saveM(); doBackup(true); } }]);
   }
   if ((D.hist.length >= 3 || (D.hist.length && M.fu && daysBetween(M.fu, today()) >= 3)) && (M.bz || 0) < now && (!M.lb || daysBetween(M.lb, today()) > 14)) {
     const d = M.lb ? daysBetween(M.lb, today()) : null;
@@ -447,6 +450,10 @@ syncSettings(); syncA11y(); renderAccent(); applyTheme(P.th || 'auto'); renderIn
 applyScope(); renderAll();
 if (pointsOf(D.cur).length) setTimeout(() => { map.invalidateSize(); fitCur(); }, 120);
 recalc();
+// iPhone en Safari, sin datos: antes de crear el PIN o restaurar, que la instale (Safari y la app no comparten datos)
+const iosGateOn = () => isIOS() && !rzInApp() && !D.hist.length && !D.clients.length && !M.iosOk;
+if (iosGateOn()) $('#iosGate').hidden = false;
+$('#igSkip').onclick = () => { M.iosOk = 1; saveM(); $('#iosGate').hidden = true; };
 let skipPin = false; try { const u = +sessionStorage.getItem(UL_KEY); sessionStorage.removeItem(UL_KEY); skipPin = u > Date.now(); } catch (e) {}
 if (hasPin() && skipPin) { locked = false; setTimeout(() => { map.invalidateSize(); if (!maybeNews()) maybeBanner(); }, 300); }
 else if (hasPin()) showLock('unlock', 'boot'); else showLock('create', 'boot');
