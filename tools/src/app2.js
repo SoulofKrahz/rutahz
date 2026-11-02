@@ -203,7 +203,7 @@ function stopMenu(s) {
 /* =================== Búsqueda (clientes, municipios y direcciones) =================== */
 function setupSearch(inp, box, kind) {
   let t = null, tok = 0, items = [];
-  const close = () => { box.hidden = true; box.innerHTML = ''; items = []; };
+  const close = () => { clearTimeout(t); tok++; box.hidden = true; box.innerHTML = ''; items = []; }; // tok++: anula la búsqueda en curso para que no reabra la lista
   function paint(live, state) {
     const q = norm(inp.value); items = [];
     let h = '';
@@ -230,12 +230,13 @@ function setupSearch(inp, box, kind) {
     if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
-    try { const r = await geoSearch(q, 5); if (my !== tok) return; paint(r, r.length ? '' : 'none'); }
-    catch (e) { if (my === tok) paint(null, 'err'); }
+    try { const r = await geoSearch(q, 5); if (my !== tok || !inp.value.trim()) return; paint(r, r.length ? '' : 'none'); }
+    catch (e) { if (my === tok && inp.value.trim()) paint(null, 'err'); }
   }
   inp.addEventListener('input', () => {
-    clearTimeout(t); const q = inp.value.trim(), my = ++tok;
+    const q = inp.value.trim();
     if (!q) return close();
+    clearTimeout(t); const my = ++tok;
     if (q.length < 3) return paint(null, '');
     if (!navigator.onLine) return paint(null, 'off');
     paint(null, 'busy'); t = setTimeout(() => live(q, my), 600);
@@ -410,7 +411,8 @@ function renderLegs() {
     const i = +el.dataset.seg;
     if (routing || !legs.length) { el.textContent = routing ? 'calculando…' : ''; return; }
     let acc = 0; for (let k = 0; k <= i; k++) acc += legs[k] || 0;
-    el.textContent = `+${nf1.format(legs[i] || 0)} km · ${nf1.format(acc)} km en total`;
+    const ld = R.legsDur && R.legsDur[i] != null ? R.legsDur[i] * D.set.tf + D.set.pm : null;
+    el.textContent = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''} · ${nf1.format(acc)} km en total`;
   });
 }
 function renderRuta() {

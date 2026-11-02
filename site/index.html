@@ -351,6 +351,8 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
  #print th{text-align:left;border-bottom:1.5px solid #111;padding:5px 6px;font-size:8.5pt;text-transform:uppercase;letter-spacing:.03em}
  #print td{border-bottom:1px solid #ddd;padding:5px 6px;vertical-align:top}#print td.n{text-align:right;white-space:nowrap}
  #print tfoot td{font-weight:700;border-top:1.5px solid #111;border-bottom:0}
+ #print tr.sub td{font-weight:600;background:#f3f3f3;border-bottom:1.5px solid #bbb}
+ #print .fn p{margin:0 0 4px}
  #print .det{font-size:8.5pt;color:#444}
  #print .fn{font-size:8pt;color:#666;margin-top:16px}
 }
@@ -403,6 +405,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9M12 17.2h.01"/></symbol>
 <symbol id="i-dest" viewBox="0 0 24 24"><path d="M12 21.5s-7-6.1-7-11.6a7 7 0 0 1 14 0c0 5.5-7 11.6-7 11.6z"/><path d="m12 6.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"/></symbol>
 <symbol id="i-sort" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
 <symbol id="i-bigpin" viewBox="0 0 44 54"><path d="M22 52S4 34.6 4 21a18 18 0 0 1 36 0c0 13.6-18 31-18 31z" fill="currentColor" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="6.5" fill="#fff" stroke="none"/></symbol>
 </defs></svg>
 
@@ -445,7 +448,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <button class="tab on" data-v="ruta"><svg class="i"><use href="#i-route"/></svg>Ruta</button>
       <button class="tab" data-v="dest"><svg class="i"><use href="#i-dest"/></svg>Destinos</button>
       <button class="tab" data-v="hist"><svg class="i"><use href="#i-hist"/></svg>Historial</button>
-      <button class="tab" data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Estadísticas</button>
+      <button class="tab" data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Resumen</button>
       <button class="tab" data-v="ajustes"><svg class="i"><use href="#i-cog"/></svg>Ajustes</button>
     </nav>
 
@@ -525,7 +528,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 
     <!-- ===== ESTADÍSTICAS ===== -->
     <section class="view" id="v-stats" hidden>
-      <div class="vh"><div><h1>Estadísticas</h1><p>Solo jornadas guardadas</p></div></div>
+      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div></div>
       <div id="statsBox" style="display:flex;flex-direction:column;gap:14px"></div>
     </section>
 
@@ -538,6 +541,13 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           <div class="row"><div><b>Coste por km</b><small>En euros. Cada jornada guarda el valor del día en que se guardó.</small></div><input class="inp" id="setCpk" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Coste por kilómetro"></div>
           <div class="row"><div><b>Volver al punto de partida</b><small>Valor por defecto para cada jornada nueva.</small></div><label class="sw"><input type="checkbox" id="setRet" aria-label="Volver al punto de partida por defecto"><span></span></label></div>
           <div class="row"><div><b>Ajuste sin conexión</b><small>Sin cobertura se mide en línea recta y se multiplica por este número. La jornada queda como «estimada» y se puede recalcular después.</small></div><input class="inp" id="setRf" type="number" inputmode="decimal" step="0.05" min="1" max="3" aria-label="Ajuste sin conexión"></div>
+        </section>
+        <section class="card set"><h2>Tiempo al volante</h2><p>El servicio de rutas calcula el tiempo a la velocidad de cada vía, sin tráfico ni aparcar, y suele quedarse corto. Rutahz lo ajusta así:</p>
+          <div class="fm" id="tfFormula" style="margin-bottom:6px"></div>
+          <div class="row"><div><b>Factor de tráfico</b><small>1,00 = sin ajuste. 1,15 = un 15 % más lento que la vía libre.</small></div><input class="inp" id="setTf" type="number" inputmode="decimal" step="0.05" min="1" max="2" aria-label="Factor de tráfico"></div>
+          <div class="row"><div><b>Minutos por llegada</b><small>Aparcar y llegar a la puerta, en cada parada y en la vuelta.</small></div><input class="inp" id="setPm" type="number" inputmode="numeric" step="1" min="0" max="30" aria-label="Minutos por llegada"></div>
+          <div class="row"><div><b>Calibrar con tus tiempos reales</b><small id="calS">Anota el tiempo real de algunas jornadas (Historial › jornada › Tiempo real) y Rutahz calcula el factor.</small></div><button class="btn g sm" id="bCal">Calibrar</button></div>
+          <div class="row"><div><b>Aplicar al historial</b><small>Recalcula con estos ajustes las jornadas guardadas. Las que tienen tiempo real anotado no cambian.</small></div><button class="btn g sm" id="bTfAll">Aplicar</button></div>
         </section>
         <section class="card set"><h2>Punto de partida habitual</h2><p>Cada jornada nueva empieza aquí. Márcalo con la estrella en «Punto de partida».</p><div id="favBox"></div></section>
         <section class="card set"><h2>Destinos</h2><p>Tus sitios habituales: se añaden a la ruta en un toque y se cuentan las visitas.</p><button class="btn g w" id="bGoDest"><svg class="i"><use href="#i-dest"/></svg>Gestionar destinos</button></section>
@@ -618,7 +628,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-01-3';
+const VER = '2026-11-02-0';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -658,7 +668,7 @@ const ls = {
 
 /* =================== Datos =================== */
 const KEY = 'rz_data', PFK = 'rz_pf', PINK = 'rz_pin', MK = 'rz_meta';
-const DEF_SET = { cpk: 0.26, rf: 1.25, ret: true, unl: false, shN: true, shM: true, shT: false, al: 5 };
+const DEF_SET = { cpk: 0.26, rf: 1.25, ret: true, unl: false, shN: true, shM: true, shT: false, al: 5, tf: 1.15, pm: 2 };
 let D = { v: 2, cur: { start: null, stops: [], notes: '', ret: true }, hist: [], fav: null, clients: [], edit: null, set: { ...DEF_SET } };
 let P = ls.get(PFK, {}) || {};
 let M = ls.get(MK, {}) || {};
@@ -783,7 +793,12 @@ function placeLabel(r) {
 const TOWNS = [["Palma",39.5696,2.6502],["Calvià",39.5658,2.5051],["Andratx",39.5423,2.4256],["Port d'Andratx",39.5433,2.3856],["Peguera",39.5461,2.455],["Santa Ponça",39.5089,2.4683],["Esporles",39.6428,2.5892],["Valldemossa",39.7106,2.625],["Deià",39.7469,2.6486],["Sóller",39.7649,2.7147],["Bunyola",39.6997,2.7239],["Santa Maria del Camí",39.6353,2.7622],["Marratxí",39.6297,2.7514],["Alaró",39.7078,2.7994],["Binissalem",39.6875,2.8492],["Lloseta",39.7186,2.8339],["Sa Pobla",39.7717,3.0175],["Muro",39.7364,3.0578],["Santa Margalida",39.7011,3.1069],["Ca'n Picafort",39.7772,3.1519],["Sineu",39.6428,3.0114],["Inca",39.7217,2.9106],["Sencelles",39.6217,2.8894],["Algaida",39.5578,2.8842],["Montuïri",39.5642,2.9739],["Porreres",39.5153,3.0197],["Petra",39.6086,3.1058],["Santanyí",39.3556,3.1275],["Ses Salines",39.3164,3.0475],["Colònia de Sant Jordi",39.3197,2.9986],["Campos",39.4322,2.9714],["Llucmajor",39.4897,2.8917],["Felanitx",39.4694,3.1489],["Porto Colom",39.4283,3.2669],["Manacor",39.5694,3.2085],["Porto Cristo",39.5406,3.3211],["Sant Llorenç des Cardassar",39.6089,3.2789],["Son Servera",39.6106,3.3778],["Cala Millor",39.5936,3.3831],["Capdepera",39.7075,3.4342],["Cala Rajada",39.715,3.4689],["Artà",39.6953,3.3505],["Pollença",39.8762,3.0175],["Port de Pollença",39.9061,3.0842],["Alcúdia",39.8523,3.1219]];
 
 /* =================== Cálculo de rutas =================== */
-let R = { src: null, km: 0, straight: 0, legs: [], geom: null, dur: 0 };
+// Tiempo al volante = tiempo de OSRM (sin tráfico, a velocidad de la vía) × factor de tráfico + minutos por llegada (aparcar, maniobrar).
+// Cada jornada guarda el tiempo bruto de OSRM y los ajustes con los que se calculó, para poder explicarlo y recalcularlo.
+const adjDur = (raw, n, tf, pm) => (raw || 0) * (tf ?? D.set.tf) + (n || 0) * (pm ?? D.set.pm);
+const R0 = () => ({ src: null, km: 0, straight: 0, legs: [], legsDur: [], geom: null, durRaw: 0, dur: 0 });
+const OFF_KMH = 45; // sin conexión: velocidad media supuesta antes del factor de tráfico
+let R = R0();
 let routing = false, routeTok = 0;
 const routeCache = new Map();
 function pointsOf(c) {
@@ -794,24 +809,25 @@ function pointsOf(c) {
   return p;
 }
 async function computeRoute(points) {
-  if (points.length < 2) return { src: null, km: 0, straight: 0, legs: [], geom: null, dur: 0 };
+  if (points.length < 2) return R0();
   const sl = []; for (let i = 1; i < points.length; i++) sl.push(hav(points[i - 1], points[i]));
   const straight = sl.reduce((a, b) => a + b, 0);
   const key = points.map(p => (+p.lon).toFixed(5) + ',' + (+p.lat).toFixed(5)).join(';');
-  if (routeCache.has(key)) return routeCache.get(key);
+  if (routeCache.has(key)) { const c = routeCache.get(key); return { ...c, dur: adjDur(c.durRaw, c.legs.length) }; }
   if (navigator.onLine) {
     try {
       const d = await api('/r/' + key, `https://router.project-osrm.org/route/v1/driving/${key}?overview=full&geometries=geojson&steps=false`);
       if (d && d.code === 'Ok' && d.routes && d.routes.length) {
         const r = d.routes[0];
-        const res = { src: 'road', km: r.distance / 1000, straight, legs: r.legs.map(l => l.distance / 1000), geom: r.geometry.coordinates.map(c => [c[1], c[0]]), dur: r.duration / 60 };
+        const res = { src: 'road', km: r.distance / 1000, straight, legs: r.legs.map(l => l.distance / 1000), legsDur: r.legs.map(l => l.duration / 60), geom: r.geometry.coordinates.map(c => [c[1], c[0]]), durRaw: r.duration / 60 };
         routeCache.set(key, res); if (routeCache.size > 80) routeCache.delete(routeCache.keys().next().value);
-        return res;
+        return { ...res, dur: adjDur(res.durRaw, res.legs.length) };
       }
     } catch (e) { console.warn('Ruta: sin respuesta del servicio, se usa la estimación', e); }
   }
   const rf = D.set.rf || 1.25;
-  return { src: 'straight', km: straight * rf, straight, legs: sl.map(k => k * rf), geom: null, dur: straight * rf / 40 * 60 };
+  const legs = sl.map(k => k * rf), legsDur = legs.map(k => k / OFF_KMH * 60), durRaw = legsDur.reduce((a, b) => a + b, 0);
+  return { src: 'straight', km: straight * rf, straight, legs, legsDur, geom: null, durRaw, dur: adjDur(durRaw, legs.length) };
 }
 async function recalc() {
   const my = ++routeTok;
@@ -1027,7 +1043,7 @@ function stopMenu(s) {
 /* =================== Búsqueda (clientes, municipios y direcciones) =================== */
 function setupSearch(inp, box, kind) {
   let t = null, tok = 0, items = [];
-  const close = () => { box.hidden = true; box.innerHTML = ''; items = []; };
+  const close = () => { clearTimeout(t); tok++; box.hidden = true; box.innerHTML = ''; items = []; }; // tok++: anula la búsqueda en curso para que no reabra la lista
   function paint(live, state) {
     const q = norm(inp.value); items = [];
     let h = '';
@@ -1054,12 +1070,13 @@ function setupSearch(inp, box, kind) {
     if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
-    try { const r = await geoSearch(q, 5); if (my !== tok) return; paint(r, r.length ? '' : 'none'); }
-    catch (e) { if (my === tok) paint(null, 'err'); }
+    try { const r = await geoSearch(q, 5); if (my !== tok || !inp.value.trim()) return; paint(r, r.length ? '' : 'none'); }
+    catch (e) { if (my === tok && inp.value.trim()) paint(null, 'err'); }
   }
   inp.addEventListener('input', () => {
-    clearTimeout(t); const q = inp.value.trim(), my = ++tok;
+    const q = inp.value.trim();
     if (!q) return close();
+    clearTimeout(t); const my = ++tok;
     if (q.length < 3) return paint(null, '');
     if (!navigator.onLine) return paint(null, 'off');
     paint(null, 'busy'); t = setTimeout(() => live(q, my), 600);
@@ -1234,7 +1251,8 @@ function renderLegs() {
     const i = +el.dataset.seg;
     if (routing || !legs.length) { el.textContent = routing ? 'calculando…' : ''; return; }
     let acc = 0; for (let k = 0; k <= i; k++) acc += legs[k] || 0;
-    el.textContent = `+${nf1.format(legs[i] || 0)} km · ${nf1.format(acc)} km en total`;
+    const ld = R.legsDur && R.legsDur[i] != null ? R.legsDur[i] * D.set.tf + D.set.pm : null;
+    el.textContent = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''} · ${nf1.format(acc)} km en total`;
   });
 }
 function renderRuta() {
@@ -1299,6 +1317,25 @@ $('#bClear').onclick = async () => {
   toast('Ruta vaciada', { undo: () => { D.cur = snap; save(); renderRuta(); recalc(); } });
 };
 
+/* =================== Tiempos =================== */
+const isReal = j => j.tot && j.tot.durM != null;
+const jDur = j => !j.tot ? 0 : isReal(j) ? j.tot.durM : (j.tot.dur || 0);
+const arrivals = j => j.stops.length + (j.ret ? 1 : 0);
+const hhmm = m => { if (!(m > 0)) return ''; const t = Math.round(m); return Math.floor(t / 60) + ':' + pad(t % 60); };
+const fmtX = n => nf2.format(n).replace(/0$/, '');
+function legMin(j, i) { const d = j.legsDur && j.legsDur[i]; return d == null ? null : d * (j.tot.tf ?? 1) + (j.tot.pm ?? 0); }
+function durExplain(j) {
+  if (!j.tot || j.tot.durRaw == null) return 'Calculado con la versión anterior de Rutahz (sin ajuste de tráfico).';
+  return `Servicio de rutas ${fmtDur(j.tot.durRaw)} × ${fmtX(j.tot.tf)} + ${arrivals(j)} llegada${arrivals(j) === 1 ? '' : 's'} × ${j.tot.pm} min = ${fmtDur(j.tot.dur)}`;
+}
+const durHtml = (id, m) => `<div class="brow" style="flex-wrap:nowrap;align-items:center;gap:8px"><input class="inp" id="${id}h" type="number" inputmode="numeric" min="0" max="23" placeholder="h" value="${m != null ? Math.floor(Math.round(m) / 60) : ''}" style="width:84px" aria-label="Horas"><span>h</span><input class="inp" id="${id}m" type="number" inputmode="numeric" min="0" max="59" placeholder="min" value="${m != null ? Math.round(m) % 60 : ''}" style="width:96px" aria-label="Minutos"><span>min</span></div>`;
+function readDur(b, id) {
+  const h = b.querySelector('#' + id + 'h').value.trim(), m = b.querySelector('#' + id + 'm').value.trim();
+  if (!h && !m) return null;
+  const v = (parseInt(h || '0', 10) || 0) * 60 + (parseInt(m || '0', 10) || 0);
+  return v > 0 && v < 24 * 60 ? v : undefined;
+}
+
 /* =================== Guardar jornada / editar =================== */
 function entryFromCur(meta) {
   const c = D.cur;
@@ -1306,23 +1343,25 @@ function entryFromCur(meta) {
     id: meta.id || uid(), label: meta.label, iso: meta.iso,
     start: { lat: c.start.lat, lon: c.start.lon, label: c.start.label, time: c.start.time || '' },
     stops: c.stops.map(s => ({ lat: s.lat, lon: s.lon, label: s.label, cid: s.cid || null })),
-    ret: !!c.ret, legs: R.legs.slice(), notes: c.notes || '',
-    tot: { road: R.km, dur: R.dur, cost: R.km * D.set.cpk, cpk: D.set.cpk, src: R.src, straight: R.straight }
+    ret: !!c.ret, legs: R.legs.slice(), legsDur: (R.legsDur || []).slice(), notes: c.notes || '',
+    tot: { road: R.km, dur: R.dur, durRaw: R.durRaw, tf: D.set.tf, pm: D.set.pm, durM: meta.durM ?? null, cost: R.km * D.set.cpk, cpk: D.set.cpk, src: R.src, straight: R.straight }
   };
 }
-function askDetails(label, iso) {
+function askDetails(label, iso, durM) {
   const y = new Date(); y.setDate(y.getDate() - 1);
   return dlg({
     title: D.edit ? 'Guardar cambios' : 'Guardar jornada', ok: 'Guardar',
     text: `${fmtKm(R.km)} · ${D.cur.stops.length} parada${D.cur.stops.length > 1 ? 's' : ''}${D.cur.ret ? ' · con vuelta' : ''}${R.src === 'straight' ? '\nSin conexión: la distancia es estimada. Podrás recalcularla desde el historial.' : ''}`,
     html: `<div><label class="lb" for="jn">Nombre</label><input class="inp" id="jn" type="text" maxlength="80" value="${esc(label)}" enterkeyhint="done"></div>
       <div><label class="lb" for="jd">Fecha de la jornada</label><input class="inp" id="jd" type="date" value="${esc(iso)}" max="${today()}">
-      <div class="brow" style="margin-top:8px"><button class="btn g sm" data-d="${today()}">Hoy</button><button class="btn g sm" data-d="${isoOf(y)}">Ayer</button></div></div>`,
+      <div class="brow" style="margin-top:8px"><button class="btn g sm" data-d="${today()}">Hoy</button><button class="btn g sm" data-d="${isoOf(y)}">Ayer</button></div></div>
+      <div><label class="lb">Tiempo real al volante <span style="font-weight:500">(opcional)</span></label>${durHtml('jt', durM)}<p class="hint" style="margin-top:6px">Estimado: <b>${fmtDur(R.dur)}</b>. Si sabes el tiempo real, anótalo: es el que saldrá en los informes.</p></div>`,
     open: b => b.querySelectorAll('[data-d]').forEach(x => x.onclick = () => { b.querySelector('#jd').value = x.dataset.d; }),
     check: b => {
       const d = b.querySelector('#jd').value || today();
       if (d > today()) { toast('La fecha no puede ser futura.'); return undefined; }
-      return { label: b.querySelector('#jn').value.trim() || label, iso: d };
+      const t = readDur(b, 'jt'); if (t === undefined) { toast('Revisa el tiempo real: entre 1 minuto y 23 h 59 min.'); return undefined; }
+      return { label: b.querySelector('#jn').value.trim() || label, iso: d, durM: t };
     }
   });
 }
@@ -1332,7 +1371,7 @@ $('#bSave').onclick = async () => {
   await recalc();
   const det = await askDetails(defaultName(today()), today()); if (!det) return;
   const e = entryFromCur(det); D.hist.push(e);
-  D.cur = newCur(); R = { src: null, km: 0, straight: 0, legs: [], geom: null, dur: 0 };
+  D.cur = newCur(); R = R0();
   save(); renderRuta(); renderHist(); renderStats(); renderChip(); maybeBanner();
   toast(`Jornada guardada: ${fmtKm(e.tot.road)}`, { undo: () => { D.hist = D.hist.filter(x => x !== e); D.cur = { start: e.start, stops: e.stops.map(s => ({ ...s, id: uid() })), notes: e.notes, ret: e.ret }; save(); renderAll(); recalc(); } });
 };
@@ -1351,9 +1390,9 @@ function startEdit(j) {
 $('#bEditOk').onclick = async () => {
   if (!D.edit) return;
   await recalc();
-  const det = await askDetails(D.edit.snap.label, D.edit.snap.iso || today()); if (!det) return;
+  const det = await askDetails(D.edit.snap.label, D.edit.snap.iso || today(), D.edit.snap.tot.durM); if (!det) return;
   const e = entryFromCur({ ...det, id: D.edit.snap.id });
-  if (R.src !== 'road' && D.edit.snap.tot.src === 'road' && pointsEqual(D.edit.snap, D.cur)) e.tot = { ...D.edit.snap.tot }; // sin cambios de puntos: conserva la cifra real
+  if (R.src !== 'road' && D.edit.snap.tot.src === 'road' && pointsEqual(D.edit.snap, D.cur)) { e.tot = { ...D.edit.snap.tot, durM: det.durM ?? null }; e.legs = D.edit.snap.legs || e.legs; e.legsDur = D.edit.snap.legsDur || e.legsDur; } // sin cambios de puntos: conserva la cifra real
   e.tot.cpk = D.edit.snap.tot.cpk ?? D.set.cpk; e.tot.cost = e.tot.road * e.tot.cpk;
   D.hist.push(e); D.cur = D.edit.prevCur || newCur(); D.edit = null;
   save(); renderAll(); recalc();
@@ -1386,6 +1425,7 @@ function histSheet(j) {
     { icon: 'eye', label: 'Ver en el mapa', fn: () => showHistOnMap(j) },
     { icon: 'share', label: 'Compartir', sub: 'WhatsApp, correo u otra app', fn: () => shareEntry(j) },
     { icon: 'rep', label: 'Repetir como ruta nueva', fn: () => repeatEntry(j) },
+    { icon: 'clock', label: isReal(j) ? 'Tiempo real: ' + fmtDur(j.tot.durM) : 'Anotar el tiempo real al volante', sub: isReal(j) ? 'Estimado: ' + fmtDur(j.tot.dur) : 'Estimado: ' + fmtDur(j.tot.dur) + ' · el real es el que vale en los informes', fn: () => setRealTime(j) },
     { icon: 'edit', label: 'Editar', fn: () => startEdit(j) },
     est(j) && { icon: 'refresh', label: 'Recalcular por carretera', sub: 'Ahora es una estimación sin conexión', fn: () => recalcEntries([j]) },
     { icon: 'trash', label: 'Eliminar', danger: true, fn: () => {
@@ -1394,6 +1434,16 @@ function histSheet(j) {
       toast('Jornada eliminada', { undo: () => { D.hist.splice(Math.min(i, D.hist.length), 0, j); save(); renderHist(); renderStats(); renderChip(); } });
     } },
   ] });
+}
+function setRealTime(j) {
+  const acts = [{ t: 'Cancelar', cls: 'g', v: null }, ...(isReal(j) ? [{ t: 'Usar el estimado', cls: 'g', v: 'clear' }] : []), { t: 'Guardar', v: 'ok' }];
+  dlg({ title: 'Tiempo real al volante', text: `${j.label} · ${fmtDate(j.iso, { day: 'numeric', month: 'long' })}\n${durExplain(j)}`, acts, focus: true,
+    html: durHtml('rt', j.tot.durM), check: (b, v) => { if (v !== 'ok') return v; const t = readDur(b, 'rt'); if (t == null) { toast('Escribe horas o minutos.'); return undefined; } if (t === undefined) { toast('Entre 1 minuto y 23 h 59 min.'); return undefined; } return t; } })
+    .then(v => {
+      if (v == null) return; const old = j.tot.durM ?? null;
+      j.tot.durM = v === 'clear' ? null : v; save(); renderHist(); renderStats(); renderCalNote();
+      toast(v === 'clear' ? 'Vuelve a usar el tiempo estimado' : 'Tiempo real guardado: ' + fmtDur(v), { undo: () => { j.tot.durM = old; save(); renderHist(); renderStats(); renderCalNote(); } });
+    });
 }
 function renderHist() {
   const q = norm($('#hq').value), all = D.hist.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '') || String(b.id).localeCompare(String(a.id)));
@@ -1411,7 +1461,7 @@ function renderHist() {
   for (const [k, items] of groups) {
     const km = items.reduce((a, j) => a + (j.tot.road || 0), 0), lab = k === '—' ? 'Sin fecha' : dOf(k + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     h += `<div class="gh">${esc(lab)}<span>${items.length} jornada${items.length > 1 ? 's' : ''} · ${fmtKm0(km)}</span></div>`;
-    h += items.map(j => { const d = dOf(j.iso); return `<button class="hi" data-id="${esc(j.id)}"><span class="dd"><b>${j.iso ? d.getDate() : '—'}</b><small>${j.iso ? d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '') : ''}</small></span><span class="bd"><h3>${esc(j.label)}</h3><span class="mt"><span class="chip m">${j.stops.length} parada${j.stops.length > 1 ? 's' : ''}</span>${j.ret ? `<span class="chip m">${ic('ret')}vuelta</span>` : ''}${est(j) ? `<span class="chip w">${ic('off')}estimada</span>` : ''}</span>${j.notes ? `<span class="nt">${esc(j.notes)}</span>` : ''}</span><span class="km"><b>${fmtKm(j.tot.road)}</b><small>${fmtEur(j.tot.cost)}</small></span></button>`; }).join('');
+    h += items.map(j => { const d = dOf(j.iso); return `<button class="hi" data-id="${esc(j.id)}"><span class="dd"><b>${j.iso ? d.getDate() : '—'}</b><small>${j.iso ? d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '') : ''}</small></span><span class="bd"><h3>${esc(j.label)}</h3><span class="mt"><span class="chip m">${j.stops.length} parada${j.stops.length > 1 ? 's' : ''}</span>${j.ret ? `<span class="chip m">${ic('ret')}vuelta</span>` : ''}${est(j) ? `<span class="chip w">${ic('off')}estimada</span>` : ''}${jDur(j) > 0 ? `<span class="chip ${isReal(j) ? '' : 'm'}">${ic('clock')}${fmtDur(jDur(j))}${isReal(j) ? ' · real' : ''}</span>` : ''}</span>${j.notes ? `<span class="nt">${esc(j.notes)}</span>` : ''}</span><span class="km"><b>${fmtKm(j.tot.road)}</b><small>${fmtEur(j.tot.cost)}</small></span></button>`; }).join('');
   }
   el.innerHTML = h;
   el.querySelectorAll('.hi').forEach(b => b.onclick = () => { const j = D.hist.find(x => String(x.id) === b.dataset.id); if (j) histSheet(j); });
@@ -1424,7 +1474,7 @@ async function recalcEntries(list) {
   for (let i = 0; i < list.length; i++) {
     const j = list[i]; toast(`Recalculando ${i + 1} de ${list.length}…`, { ms: 20000 });
     const r = await computeRoute(pointsOf(j));
-    if (r.src === 'road') { const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk); j.legs = r.legs; j.tot = { ...j.tot, road: r.km, dur: r.dur, src: 'road', straight: r.straight, cpk, cost: r.km * cpk }; ok++; }
+    if (r.src === 'road') { const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk), tf = j.tot.tf ?? D.set.tf, pm = j.tot.pm ?? D.set.pm; j.legs = r.legs; j.legsDur = r.legsDur; j.tot = { ...j.tot, road: r.km, durRaw: r.durRaw, tf, pm, dur: adjDur(r.durRaw, r.legs.length, tf, pm), src: 'road', straight: r.straight, cpk, cost: r.km * cpk }; ok++; }
     if (i < list.length - 1) await sleep(1100); // el servidor público de rutas pide como mucho 1 petición por segundo
   }
   recalcBusy = false; save(); renderHist(); renderStats(); renderChip();
@@ -1437,11 +1487,12 @@ function shareText(j, o) {
   L.push(`🗺️ ${j.label} — ${fmtDate(j.iso)}`);
   L.push(`Salida: ${o.n ? j.start.label : 'Punto de partida'}${j.start.time ? ' (' + j.start.time + ')' : ''}`);
   let acc = 0;
-  j.stops.forEach((s, i) => { const k = (j.legs && j.legs[i]) || 0; acc += k; L.push(`${i + 1}. ${name(s, i)} — ${fmtKm(k)} (total ${fmtKm(acc)})`); });
-  if (j.ret) { const k = (j.legs && j.legs[j.stops.length]) || 0; acc += k; L.push(`↩ Vuelta a ${o.n ? j.start.label : 'punto de partida'} — ${fmtKm(k)}`); }
+  const lm = i => { const m = legMin(j, i); return m != null && !isReal(j) ? ` · ${fmtDur(m)}` : ''; };
+  j.stops.forEach((s, i) => { const k = (j.legs && j.legs[i]) || 0; acc += k; L.push(`${i + 1}. ${name(s, i)} — ${fmtKm(k)}${lm(i)} (total ${fmtKm(acc)})`); });
+  if (j.ret) { const i = j.stops.length, k = (j.legs && j.legs[i]) || 0; acc += k; L.push(`↩ Vuelta a ${o.n ? j.start.label : 'punto de partida'} — ${fmtKm(k)}${lm(i)}`); }
   L.push('');
   L.push(`Total: ${fmtKm(j.tot.road)}${j.tot.src === 'road' ? ' por carretera' : ' (estimado)'}`);
-  if (j.tot.dur > 0) L.push(`Al volante: ${fmtDur(j.tot.dur)}`);
+  if (jDur(j) > 0) L.push(`Al volante: ${fmtDur(jDur(j))}${isReal(j) ? ' (real)' : ' (estimado)'}`);
   if (o.t && j.notes) L.push(`📝 ${j.notes}`);
   if (o.m && j.stops.length) {
     const pts = pointsOf(j), org = pts[0], dst = pts[pts.length - 1], mid = pts.slice(1, -1).slice(0, 9);
@@ -1510,6 +1561,8 @@ function renderStats() {
       <div><b>${fmtKm0(moKm)}</b><span>Este mes</span><small>${mo.length} jornada${mo.length === 1 ? '' : 's'} · ${fmtEur(sum(mo, j => j.tot.cost))}</small></div>
       <div>${cmp}</div>
       <div><b>${days}</b><span>Días con ruta</span><small>en ${now.toLocaleDateString('es-ES', { month: 'long' })}</small></div>
+      <div><b>${fmtDur(sum(wk, jDur))}</b><span>Al volante · semana</span><small>${wk.filter(isReal).length ? wk.filter(isReal).length + ' con tiempo real' : 'estimado'}</small></div>
+      <div><b>${fmtDur(sum(mo, jDur))}</b><span>Al volante · mes</span><small>${mo.length ? (mo.filter(isReal).length === mo.length ? 'todo tiempo real' : mo.filter(isReal).length ? mo.filter(isReal).length + ' de ' + mo.length + ' con tiempo real' : 'estimado') : '—'}</small></div>
     </div></div>
     <div class="card"><div class="ch"><span>${ic('chart')}Km por mes</span><small>últimos 6 meses</small></div><div class="chart" role="img" aria-label="Kilómetros por mes">${months.map((k, i) => `<div class="${k === ym ? 'cur' : ''}"><em>${mkm[i] ? nf0.format(mkm[i]) : ''}</em><i style="height:${Math.max(3, Math.round(mkm[i] / mx * 130))}px"></i><span>${dOf(k + '-01').toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')}</span></div>`).join('')}</div></div>
     <div class="card"><div class="ch"><span>${ic('route')}Histórico</span></div><div class="sg">
@@ -1518,7 +1571,7 @@ function renderStats() {
       <div><b>${fmtKm(allKm / H.length)}</b><span>Km por jornada</span></div>
       <div><b>${nf1.format(allStops / H.length)}</b><span>Paradas por jornada</span></div>
       <div><b>${fmtEur(sum(H, j => j.tot.cost))}</b><span>Coste estimado</span></div>
-      <div><b>${fmtDur(sum(H, j => j.tot.dur))}</b><span>Al volante</span></div>
+      <div><b>${fmtDur(sum(H, jDur))}</b><span>Al volante</span><small>${fmtDur(sum(H, jDur) / H.length)} por jornada</small></div>
     </div></div>
     <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<div>${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)}</div>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
   box.querySelectorAll('.rk button').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
@@ -1534,14 +1587,14 @@ function periodRange(k, from, to) {
   return ['0000-01-01', '9999-12-31', 'Todas las jornadas'];
 }
 function exportDlg(pre) {
-  const per = pre || M.exP || 'mes', cols = Object.assign({ paradas: true, km: true, tiempo: true, coste: true, notas: false, det: false }, M.exC || {});
+  const per = pre || M.exP || 'mes', cols = Object.assign({ salida: false, paradas: true, km: true, tiempo: true, coste: true, notas: false, det: false }, M.exC || {});
   const cb = (k, l) => `<label style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.875rem"><input type="checkbox" data-c="${k}" ${cols[k] ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--em2)">${l}</label>`;
   dlg({
     title: 'Informe y Excel',
     acts: [{ t: 'Cancelar', cls: 'g', v: null }, { t: 'Excel', cls: 'g', v: 'csv', icon: 'sheet' }, { t: 'Informe / PDF', v: 'pdf', icon: 'file' }],
     html: `<div><label class="lb">Periodo</label><select class="inp" id="exP"><option value="mes">Este mes</option><option value="ant">Mes anterior</option><option value="ano">Este año</option><option value="todo">Todo</option><option value="fec">Entre fechas…</option></select>
       <div class="brow" id="exF" style="margin-top:8px" hidden><input class="inp" type="date" id="exA" style="flex:1" aria-label="Desde"><input class="inp" type="date" id="exB" style="flex:1" aria-label="Hasta"></div><p class="hint" id="exN" style="margin-top:6px"></p></div>
-      <div><label class="lb">Columnas del informe</label>${cb('paradas', 'Número de paradas')}${cb('km', 'Kilómetros')}${cb('tiempo', 'Tiempo al volante')}${cb('coste', 'Coste estimado')}${cb('notas', 'Notas')}${cb('det', 'Lista de paradas de cada jornada (con nombres)')}</div>
+      <div><label class="lb">Columnas del informe</label>${cb('salida', 'Hora de salida')}${cb('paradas', 'Número de paradas')}${cb('km', 'Kilómetros')}${cb('tiempo', 'Tiempo al volante')}${cb('coste', 'Coste estimado')}${cb('notas', 'Notas')}${cb('det', 'Recorrido de cada jornada: paradas con km y tiempo por tramo (con nombres)')}</div>
       <div><label class="lb">Excel</label><select class="inp" id="exK"><option value="res">Una fila por jornada</option><option value="det">Una fila por parada (detalle)</option></select></div>`,
     open: b => {
       const sP = b.querySelector('#exP'); sP.value = per;
@@ -1564,20 +1617,36 @@ function exportDlg(pre) {
 }
 $('#bExport').onclick = () => exportDlg(); $('#bExport2').onclick = () => exportDlg();
 function stopChain(j) { const p = [j.start.label, ...j.stops.map((s, i) => s.label || `Parada ${i + 1}`)]; if (j.ret) p.push(j.start.label); return p.join(' → '); }
+function legChain(j) { // «Oficina → Casa de J. (12,3 km · 15 min) → …»; sin minutos por tramo si el tiempo es real o no hay datos
+  const names = [...j.stops.map((s, i) => s.label || `Parada ${i + 1}`), ...(j.ret ? [j.start.label] : [])];
+  return j.start.label + names.map((n, i) => { const k = j.legs && j.legs[i], m = isReal(j) ? null : legMin(j, i); return ` → ${n}${k != null ? ` (${nf1.format(k)} km${m != null ? ' · ' + fmtDur(m) : ''})` : ''}`; }).join('');
+}
 function printReport(list, lab, c) {
-  const km = list.reduce((s, j) => s + (j.tot.road || 0), 0), cost = list.reduce((s, j) => s + (j.tot.cost || 0), 0), dur = list.reduce((s, j) => s + (j.tot.dur || 0), 0);
-  const th = ['Fecha', 'Jornada']; if (c.paradas) th.push('Paradas'); if (c.km) th.push('Km'); if (c.tiempo) th.push('Tiempo'); if (c.coste) th.push('Coste'); if (c.notas) th.push('Notas');
-  const rows = list.map(j => {
-    const cells = [`<td style="white-space:nowrap">${esc(fmtDate(j.iso, { day: '2-digit', month: '2-digit', year: 'numeric' }))}</td>`, `<td>${esc(j.label)}${est(j) ? ' <span style="color:#a8640a">(estimada)</span>' : ''}${c.det ? `<div class="det">${esc(stopChain(j))}</div>` : ''}</td>`];
-    if (c.paradas) cells.push(`<td class="n">${j.stops.length}</td>`); if (c.km) cells.push(`<td class="n">${fmtKm(j.tot.road)}</td>`); if (c.tiempo) cells.push(`<td class="n">${fmtDur(j.tot.dur)}</td>`); if (c.coste) cells.push(`<td class="n">${fmtEur(j.tot.cost)}</td>`); if (c.notas) cells.push(`<td>${esc(j.notes || '')}</td>`);
+  const sum = (arr, f) => arr.reduce((a, j) => a + (f(j) || 0), 0);
+  const km = sum(list, j => j.tot.road), cost = sum(list, j => j.tot.cost), dur = sum(list, jDur), nReal = list.filter(isReal).length;
+  const th = ['Fecha', 'Jornada']; if (c.salida) th.push('Salida'); if (c.paradas) th.push('Paradas'); if (c.km) th.push('Km'); if (c.tiempo) th.push('Al volante'); if (c.coste) th.push('Coste'); if (c.notas) th.push('Notas');
+  const lead = 2 + (c.salida ? 1 : 0);
+  const cellsFor = j => {
+    const cells = [`<td style="white-space:nowrap">${esc(fmtDate(j.iso, { day: '2-digit', month: '2-digit', year: 'numeric' }))}</td>`, `<td>${esc(j.label)}${est(j) ? ' <span style="color:#a8640a">(km estimados)</span>' : ''}${c.det ? `<div class="det">${esc(legChain(j))}</div>` : ''}</td>`];
+    if (c.salida) cells.push(`<td class="n">${esc(j.start.time || '—')}</td>`);
+    if (c.paradas) cells.push(`<td class="n">${j.stops.length}</td>`); if (c.km) cells.push(`<td class="n">${fmtKm(j.tot.road)}</td>`);
+    if (c.tiempo) cells.push(`<td class="n">${fmtDur(jDur(j))}${isReal(j) ? ' <span class="det">real</span>' : ''}</td>`);
+    if (c.coste) cells.push(`<td class="n">${fmtEur(j.tot.cost)}</td>`); if (c.notas) cells.push(`<td>${esc(j.notes || '')}</td>`);
     return `<tr>${cells.join('')}</tr>`;
-  }).join('');
-  const foot = [`<td colspan="2">Total · ${list.length} jornada${list.length > 1 ? 's' : ''}</td>`]; if (c.paradas) foot.push(`<td class="n">${list.reduce((s, j) => s + j.stops.length, 0)}</td>`); if (c.km) foot.push(`<td class="n">${fmtKm(km)}</td>`); if (c.tiempo) foot.push(`<td class="n">${fmtDur(dur)}</td>`); if (c.coste) foot.push(`<td class="n">${fmtEur(cost)}</td>`); if (c.notas) foot.push('<td></td>');
+  };
+  const totRow = (label, arr, strong) => { const f = [`<td colspan="${lead}">${label}</td>`]; if (c.paradas) f.push(`<td class="n">${sum(arr, j => j.stops.length)}</td>`); if (c.km) f.push(`<td class="n">${fmtKm(sum(arr, j => j.tot.road))}</td>`); if (c.tiempo) f.push(`<td class="n">${fmtDur(sum(arr, jDur))}</td>`); if (c.coste) f.push(`<td class="n">${fmtEur(sum(arr, j => j.tot.cost))}</td>`); if (c.notas) f.push('<td></td>'); return `<tr class="${strong ? '' : 'sub'}">${f.join('')}</tr>`; };
+  // subtotales por mes si el periodo abarca más de uno
+  const months = [...new Set(list.map(j => monthKey(j.iso)))];
+  let body = '';
+  if (months.length > 1) months.forEach(m => { const g = list.filter(j => monthKey(j.iso) === m); body += g.map(cellsFor).join('') + totRow(dOf(m + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).replace(/^./, x => x.toUpperCase()) + ` · ${g.length} jornada${g.length > 1 ? 's' : ''}`, g, false); });
+  else body = list.map(cellsFor).join('');
+  const tfs = [...new Set(list.filter(j => !isReal(j) && j.tot.durRaw != null).map(j => fmtX(j.tot.tf) + '|' + j.tot.pm))].map(x => x.split('|'));
+  const method = !c.tiempo ? '' : `<p>Tiempo al volante: ${nReal === list.length ? 'anotado a mano en todas las jornadas.' : `${nReal ? `${nReal} jornada${nReal > 1 ? 's' : ''} con tiempo real anotado a mano (marcadas «real»); el resto, ` : ''}estimado con el servicio de rutas OSRM a velocidad de la vía${tfs.length ? `, multiplicado por un factor de tráfico y sumando unos minutos por cada llegada para aparcar (${tfs.map(([f, p]) => `×${f} y ${p} min`).join('; ')})` : ''}${list.some(j => !isReal(j) && j.tot.durRaw == null) ? '. Las jornadas importadas de la versión anterior no llevan ese ajuste' : ''}.`}</p>`;
   const title = `Kilometraje · ${lab}`;
-  $('#print').innerHTML = `<h1>${esc(title)}</h1><div class="meta">Generado el ${esc(fmtDate(today(), { day: 'numeric', month: 'long', year: 'numeric' }))} con Rutahz${list.some(est) ? ' · las jornadas marcadas como estimadas se calcularon sin conexión' : ''}</div>
-    <div class="tot"><div><b>${fmtKm(km)}</b><span>Kilómetros</span></div><div><b>${list.length}</b><span>Jornadas</span></div><div><b>${new Set(list.map(j => j.iso)).size}</b><span>Días</span></div>${c.coste ? `<div><b>${fmtEur(cost)}</b><span>Coste estimado</span></div>` : ''}</div>
-    <table><thead><tr>${th.map((h, i) => `<th${i > 1 && h !== 'Notas' ? ' style="text-align:right"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody><tfoot><tr>${foot.join('')}</tr></tfoot></table>
-    <div class="fn">Rutahz es una herramienta personal de seguimiento de kilometraje. Distancias por carretera calculadas con OSRM (OpenStreetMap). No constituye un registro oficial ante la Agencia Tributaria ni otros organismos.</div>`;
+  $('#print').innerHTML = `<h1>${esc(title)}</h1><div class="meta">Generado el ${esc(fmtDate(today(), { day: 'numeric', month: 'long', year: 'numeric' }))} con Rutahz</div>
+    <div class="tot"><div><b>${fmtKm(km)}</b><span>Kilómetros</span></div><div><b>${list.length}</b><span>Jornadas</span></div><div><b>${new Set(list.map(j => j.iso)).size}</b><span>Días</span></div>${c.tiempo ? `<div><b>${fmtDur(dur)}</b><span>Al volante</span></div>` : ''}${c.coste ? `<div><b>${fmtEur(cost)}</b><span>Coste estimado</span></div>` : ''}</div>
+    <table><thead><tr>${th.map((h, i) => `<th${i > 1 && h !== 'Notas' ? ' style="text-align:right"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody><tfoot>${totRow(`Total · ${list.length} jornada${list.length > 1 ? 's' : ''}`, list, true)}</tfoot></table>
+    <div class="fn">${method}<p>Distancias por carretera calculadas con OSRM (OpenStreetMap)${list.some(est) ? '; las marcadas «km estimados» se midieron sin conexión, en línea recta con un factor de ajuste' : ''}. Rutahz es una herramienta personal de seguimiento de kilometraje y no constituye un registro oficial ante la Agencia Tributaria ni otros organismos.</p></div>`;
   const prev = document.title; document.title = title.replace(/[\\/:*?"<>|]/g, '-');
   setTimeout(() => { window.print(); setTimeout(() => { document.title = prev; }, 400); }, 60);
 }
@@ -1586,18 +1655,21 @@ const dec = (n, d = 1) => (n || 0).toFixed(d).replace('.', ',');
 function exportCSV(list, lab, kind, a, z) {
   let rows;
   const dd = iso => fmtDate(iso, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const tsrc = j => isReal(j) ? 'Real' : j.tot.durRaw != null ? `Estimado (×${fmtX(j.tot.tf)} + ${j.tot.pm} min/llegada)` : 'Estimado';
   if (kind === 'det') {
-    rows = [['Fecha', 'Jornada', 'Orden', 'Punto', 'Km del tramo', 'Km acumulados', 'Latitud', 'Longitud']];
+    rows = [['Fecha', 'Jornada', 'Orden', 'Punto', 'Km del tramo', 'Km acumulados', 'Min. del tramo (estimado)', 'Latitud', 'Longitud']];
     list.forEach(j => {
-      rows.push([dd(j.iso), j.label, 0, 'Salida: ' + j.start.label, '0,0', '0,0', j.start.lat.toFixed(5), j.start.lon.toFixed(5)]);
+      rows.push([dd(j.iso), j.label, 0, 'Salida: ' + j.start.label + (j.start.time ? ' (' + j.start.time + ')' : ''), '0,0', '0,0', '', j.start.lat.toFixed(5), j.start.lon.toFixed(5)]);
       let acc = 0;
-      j.stops.forEach((s, i) => { const k = (j.legs && j.legs[i]) || 0; acc += k; rows.push([dd(j.iso), j.label, i + 1, s.label, dec(k), dec(acc), s.lat.toFixed(5), s.lon.toFixed(5)]); });
-      if (j.ret) { const k = (j.legs && j.legs[j.stops.length]) || 0; acc += k; rows.push([dd(j.iso), j.label, j.stops.length + 1, 'Vuelta: ' + j.start.label, dec(k), dec(acc), j.start.lat.toFixed(5), j.start.lon.toFixed(5)]); }
+      const lm = i => { const m = legMin(j, i); return m != null ? Math.round(m) : ''; };
+      j.stops.forEach((s, i) => { const k = (j.legs && j.legs[i]) || 0; acc += k; rows.push([dd(j.iso), j.label, i + 1, s.label, dec(k), dec(acc), lm(i), s.lat.toFixed(5), s.lon.toFixed(5)]); });
+      if (j.ret) { const i = j.stops.length, k = (j.legs && j.legs[i]) || 0; acc += k; rows.push([dd(j.iso), j.label, i + 1, 'Vuelta: ' + j.start.label, dec(k), dec(acc), lm(i), j.start.lat.toFixed(5), j.start.lon.toFixed(5)]); }
     });
   } else {
-    rows = [['Fecha', 'Jornada', 'Paradas', 'Km', 'Minutos al volante', 'Coste (€)', 'Cálculo', 'Con vuelta', 'Recorrido', 'Notas']];
-    list.forEach(j => rows.push([dd(j.iso), j.label, j.stops.length, dec(j.tot.road), j.tot.dur ? Math.round(j.tot.dur) : '', dec(j.tot.cost, 2), j.tot.src === 'road' ? 'Carretera' : 'Estimado', j.ret ? 'Sí' : 'No', stopChain(j), j.notes || '']));
-    rows.push(['', 'TOTAL', list.reduce((s, j) => s + j.stops.length, 0), dec(list.reduce((s, j) => s + (j.tot.road || 0), 0)), Math.round(list.reduce((s, j) => s + (j.tot.dur || 0), 0)) || '', dec(list.reduce((s, j) => s + (j.tot.cost || 0), 0), 2), '', '', '', '']);
+    rows = [['Fecha', 'Jornada', 'Salida', 'Paradas', 'Km', 'Al volante (h:mm)', 'Minutos al volante', 'Tiempo', 'Min. estimados', 'Coste (€)', 'Cálculo de km', 'Con vuelta', 'Recorrido', 'Notas']];
+    list.forEach(j => rows.push([dd(j.iso), j.label, j.start.time || '', j.stops.length, dec(j.tot.road), hhmm(jDur(j)), jDur(j) ? Math.round(jDur(j)) : '', tsrc(j), j.tot.dur ? Math.round(j.tot.dur) : '', dec(j.tot.cost, 2), j.tot.src === 'road' ? 'Carretera' : 'Estimados', j.ret ? 'Sí' : 'No', stopChain(j), j.notes || '']));
+    const T = f => list.reduce((s, j) => s + (f(j) || 0), 0);
+    rows.push(['', 'TOTAL', '', T(j => j.stops.length), dec(T(j => j.tot.road)), hhmm(T(jDur)), Math.round(T(jDur)) || '', `${list.filter(isReal).length} real · ${list.filter(j => !isReal(j)).length} estimado`, Math.round(T(j => j.tot.dur)) || '', dec(T(j => j.tot.cost), 2), '', '', '', '']);
   }
   const name = `rutahz-${kind === 'det' ? 'detalle' : 'jornadas'}-${a === '0000-01-01' ? 'todo' : a.slice(0, 7) === z.slice(0, 7) ? a.slice(0, 7) : a + '_' + z}.csv`;
   giveFile(name, '﻿' + rows.map(r => r.map(csvC).join(';')).join('\r\n'), 'text/csv;charset=utf-8', 'Excel de Rutahz');
@@ -1618,9 +1690,36 @@ function syncSettings() {
   $('#setCpk').value = D.set.cpk; $('#setRf').value = D.set.rf; $('#setRet').checked = !!D.set.ret; $('#setUnl').checked = !!D.set.unl;
   $('#setShN').checked = !!D.set.shN; $('#setShM').checked = !!D.set.shM; $('#setShT').checked = !!D.set.shT;
   $$('#sgAl button').forEach(b => b.classList.toggle('on', +b.dataset.v === +D.set.al));
+  $('#setTf').value = D.set.tf; $('#setPm').value = D.set.pm; renderTfFormula(); renderCalNote();
 }
 $('#setCpk').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 0 && v < 10) { D.set.cpk = v; save(); renderSum(); toast('Coste por km: ' + nf2.format(v) + ' €. Se aplica a las jornadas nuevas.'); } else syncSettings(); };
 $('#setRf').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 1 && v <= 3) { D.set.rf = v; routeCache.clear(); save(); recalc(); } else syncSettings(); };
+function renderTfFormula() {
+  const ex = 30, n = 4; // ejemplo: 30 min del servicio de rutas, 3 paradas + vuelta
+  $('#tfFormula').innerHTML = `<b>Tiempo de rutas × ${fmtX(D.set.tf)} + ${D.set.pm} min por llegada</b><br>Ejemplo: 30 min de rutas con 3 paradas y vuelta = ${fmtDur(adjDur(ex, n))}.`;
+}
+function onTimeSet() { routeCache.clear(); save(); renderTfFormula(); renderCalNote(); recalc(); }
+$('#setTf').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 1 && v <= 2) { D.set.tf = Math.round(v * 100) / 100; onTimeSet(); } else { toast('El factor va de 1,00 a 2,00.'); syncSettings(); } };
+$('#setPm').onchange = e => { const v = parseInt(e.target.value, 10); if (isFinite(v) && v >= 0 && v <= 30) { D.set.pm = v; onTimeSet(); } else { toast('Entre 0 y 30 minutos.'); syncSettings(); } };
+// Calibrar: factor que reproduce lo mejor posible los tiempos reales anotados (suma real − aparcar) ÷ suma de rutas
+function calData() { const L = D.hist.filter(j => isReal(j) && j.tot.durRaw > 0); const real = L.reduce((a, j) => a + j.tot.durM - arrivals(j) * D.set.pm, 0), raw = L.reduce((a, j) => a + j.tot.durRaw, 0); return { n: L.length, tf: raw > 0 ? real / raw : null }; }
+function renderCalNote() { const el = $('#calS'); if (!el) return; const c = calData(); el.textContent = c.n ? `${c.n} jornada${c.n > 1 ? 's' : ''} con tiempo real anotado: el factor que mejor encaja es ×${fmtX(Math.min(2, Math.max(1, c.tf)))}.` : 'Anota el tiempo real de algunas jornadas (Historial › jornada › Tiempo real) y Rutahz calcula el factor.'; }
+$('#bCal').onclick = () => {
+  const c = calData();
+  if (!c.n) return dlg({ title: 'Calibrar el tiempo', text: 'Todavía no hay jornadas con tiempo real anotado.\n\nCuando termines una jornada, anota el tiempo real al volante al guardarla (o después, en Historial › la jornada › Tiempo real). Con 3–5 jornadas la calibración ya es fiable.', acts: [{ t: 'Entendido', v: null }] });
+  const raw = c.tf, tf = Math.round(Math.min(2, Math.max(1, raw)) * 20) / 20;
+  dlg({ title: 'Calibrar el tiempo', text: `Con ${c.n} jornada${c.n > 1 ? 's' : ''} con tiempo real y ${D.set.pm} min por llegada, el factor que mejor encaja es ×${fmtX(raw)}.${raw < 1 ? '\nSale por debajo de 1: tus tiempos reales son más rápidos que el servicio de rutas. Prueba a bajar los minutos por llegada.' : raw > 2 ? '\nSale muy alto: revisa que los tiempos anotados sean solo de conducción, sin las visitas.' : ''}${c.n < 3 ? '\nCon menos de 3 jornadas es orientativo.' : ''}`, ok: `Usar ×${fmtX(tf)}` })
+    .then(v => { if (v !== true) return; const old = D.set.tf; D.set.tf = tf; syncSettings(); onTimeSet(); toast(`Factor de tráfico: ×${fmtX(tf)}. Se aplica a las jornadas nuevas.`, { undo: () => { D.set.tf = old; syncSettings(); onTimeSet(); } }); });
+};
+$('#bTfAll').onclick = async () => {
+  const L = D.hist.filter(j => !isReal(j) && (j.tot.durRaw != null || j.tot.dur > 0));
+  if (!L.length) return toast('No hay jornadas estimadas que cambiar.');
+  if (!await ask('¿Aplicar al historial?', `Se recalcula el tiempo al volante de ${L.length} jornada${L.length > 1 ? 's' : ''} con ×${fmtX(D.set.tf)} y ${D.set.pm} min por llegada. Las que tienen tiempo real anotado no cambian. Se puede deshacer.`, 'Aplicar')) return;
+  const snap = L.map(j => [j, { ...j.tot }]);
+  L.forEach(j => { const raw = j.tot.durRaw != null ? j.tot.durRaw : j.tot.dur; j.tot.durRaw = raw; j.tot.tf = D.set.tf; j.tot.pm = D.set.pm; j.tot.dur = adjDur(raw, arrivals(j), D.set.tf, D.set.pm); });
+  save(); renderHist(); renderStats(); renderCalNote();
+  toast(`${L.length} jornada${L.length > 1 ? 's' : ''} actualizada${L.length > 1 ? 's' : ''}`, { undo: () => { snap.forEach(([j, t]) => { j.tot = t; }); save(); renderHist(); renderStats(); renderCalNote(); }, ms: 7000 });
+};
 $('#setRet').onchange = e => { D.set.ret = e.target.checked; save(); };
 $('#setUnl').onchange = e => { D.set.unl = e.target.checked; save(); applyScope(); toast(D.set.unl ? 'Mapa y búsqueda sin límites' : 'Mapa y búsqueda limitados a Mallorca'); };
 ['ShN', 'ShM', 'ShT'].forEach(k => $('#set' + k).onchange = e => { D.set['s' + k.slice(1, 2).toLowerCase() + k.slice(2)] = e.target.checked; save(); });
@@ -1721,14 +1820,14 @@ function fromV1Entry(j, cpkDef) {
   const t = j.totals || {}, road = num(t.road) || 0, cost = num(t.cost) || 0;
   let iso = /^\d{4}-\d{2}-\d{2}$/.test(j.iso || '') ? j.iso : '';
   return { id: 'v1-' + (j.id || uid()), label: String(j.label || 'Jornada').slice(0, 80), iso, start, stops, ret: false, legs: Array.isArray(j.legsKm) ? j.legsKm.map(Number) : [], notes: String(j.notes || ''),
-    tot: { road, dur: num(t.durationMin), cost, cpk: road ? cost / road : cpkDef, src: t.source === 'road' ? 'road' : 'straight', straight: num(t.straight) || 0 } };
+    tot: { road, dur: num(t.durationMin), cost, cpk: road ? cost / road : cpkDef, src: t.source === 'road' ? 'road' : 'straight', straight: num(t.straight) || 0, durM: null } };
 }
 function fromV2Entry(j) {
   const start = cleanPt(j.start); if (!start || !j.tot) return null; start.time = (j.start && j.start.time) || '';
   return { id: String(j.id || uid()), label: String(j.label || 'Jornada').slice(0, 80), iso: /^\d{4}-\d{2}-\d{2}$/.test(j.iso || '') ? j.iso : '', start,
     stops: (j.stops || []).map(s => { const p = cleanPt(s); return p ? { ...p, cid: s.cid || null } : null; }).filter(Boolean), ret: !!j.ret,
-    legs: Array.isArray(j.legs) ? j.legs.map(Number) : [], notes: String(j.notes || ''),
-    tot: { road: num(j.tot.road) || 0, dur: num(j.tot.dur), cost: num(j.tot.cost) || 0, cpk: num(j.tot.cpk), src: j.tot.src === 'road' ? 'road' : 'straight', straight: num(j.tot.straight) || 0 } };
+    legs: Array.isArray(j.legs) ? j.legs.map(Number) : [], legsDur: Array.isArray(j.legsDur) ? j.legsDur.map(Number) : [], notes: String(j.notes || ''),
+    tot: { road: num(j.tot.road) || 0, dur: num(j.tot.dur), durRaw: num(j.tot.durRaw), tf: num(j.tot.tf), pm: num(j.tot.pm), durM: num(j.tot.durM), cost: num(j.tot.cost) || 0, cpk: num(j.tot.cpk), src: j.tot.src === 'road' ? 'road' : 'straight', straight: num(j.tot.straight) || 0 } };
 }
 function importBackup(obj) {
   let hist = [], clients = [], fav = null, set = null, cur = null, prefs = null;
@@ -1757,7 +1856,7 @@ function importBackup(obj) {
   newH.forEach(j => j.stops.forEach(s => { if (s.cid && idMap.has(s.cid)) s.cid = idMap.get(s.cid); }));
   D.hist.push(...newH);
   if (!D.fav && fav) D.fav = fav;
-  if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); if (num(set.al) != null) D.set.al = num(set.al); }
+  if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); ['al', 'tf', 'pm'].forEach(k => { if (num(set[k]) != null) D.set[k] = num(set[k]); }); }
   if (!D.cur.stops.length && cur) { const st = cleanPt(cur.start); if (st) { const stops = (cur.stops || []).map(cleanPt).filter(Boolean).map(s => ({ ...s, id: uid(), cid: null })); if (stops.length) D.cur = { start: { ...st, time: '' }, stops, notes: String(cur.notes || ''), ret: typeof cur.ret === 'boolean' ? cur.ret : D.set.ret }; } }
   if (!D.cur.start && D.fav) D.cur.start = { ...D.fav, time: '' };
   if (fresh && prefs && typeof prefs === 'object') { ['th', 'fs', 'hc', 'rm', 'mc'].forEach(k => { if (prefs[k] != null) P[k] = prefs[k]; }); if (prefs.ah != null) { P.ah = prefs.ah; P.as = prefs.as; } saveP(); rzApply(P.ah, P.as); applyTheme(P.th || 'auto'); document.documentElement.style.setProperty('--fs', P.fs || 1); document.documentElement.classList.toggle('hc', !!P.hc); document.documentElement.classList.toggle('mapc', !!P.mc); renderAccent(); syncA11y(); }
@@ -1849,6 +1948,7 @@ function showHelp() {
       <li><b>Paradas.</b> Añade cada visita en orden: escribiendo un destino guardado o la dirección, con «Elegir en el mapa» o con el GPS. En <b>Destinos</b> guardas tus sitios habituales.</li>
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
+      <li><b>Tiempo.</b> El tiempo al volante es una estimación. Si anotas el real al guardar, es el que sale en los informes; con unos cuantos, Ajustes › Tiempo al volante › Calibrar ajusta la estimación a tu forma de conducir.</li>
       <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
       <li><b>Copia.</b> Los datos solo están en este móvil: haz copia en Ajustes › Datos.</li></ol>` });
 }

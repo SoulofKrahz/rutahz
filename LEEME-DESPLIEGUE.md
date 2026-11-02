@@ -1,6 +1,6 @@
 # Rutahz 2.0 — Despliegue en Cloudflare Pages
 
-Versión: `2026-11-01-3` · Service worker: `rz-v4`
+Versión: `2026-11-02-0` · Service worker: `rz-v5`
 
 ## Antes de nada: pasar los datos desde Netlify
 
@@ -58,3 +58,11 @@ Funciona en el plan gratuito de Workers, con 100.000 peticiones al día. Si se s
 ## Bloqueos de LaLiga
 
 Durante los partidos, los operadores españoles bloquean IP de Cloudflare y la web puede no abrir desde casa. Con la app instalada y abierta antes, se abre igual desde la copia guardada; los cálculos pasan solos a los servicios directos si el proxy no responde en 7 s. La solución definitiva es un dominio propio fuera de las IP bloqueadas, o esperar al final del partido.
+
+## Cómo se calcula el tiempo al volante
+
+- **Estimado** = tiempo de OSRM (velocidad de la vía, sin tráfico) × *factor de tráfico* + *minutos por llegada* × nº de llegadas (paradas + vuelta). Por defecto ×1,15 y 2 min; se cambia en Ajustes › General › Tiempo al volante.
+- Cada jornada guarda el tiempo bruto de OSRM, el factor y los minutos con los que se calculó: cambiar los ajustes no altera el historial salvo que se pulse «Aplicar al historial» (se puede deshacer).
+- **Real**: se puede anotar al guardar la jornada o después (Historial › jornada). Si existe, es el que sale en el resumen, el informe y el Excel, marcado «real».
+- **Calibrar** calcula el factor que mejor reproduce los tiempos reales anotados: (Σ real − llegadas × minutos) ÷ Σ OSRM. Con 3–5 jornadas ya es fiable.
+- El informe explica al pie qué tiempos son reales y con qué ajustes se estimaron los demás.

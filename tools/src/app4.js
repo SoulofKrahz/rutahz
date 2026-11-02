@@ -4,9 +4,36 @@ function syncSettings() {
   $('#setCpk').value = D.set.cpk; $('#setRf').value = D.set.rf; $('#setRet').checked = !!D.set.ret; $('#setUnl').checked = !!D.set.unl;
   $('#setShN').checked = !!D.set.shN; $('#setShM').checked = !!D.set.shM; $('#setShT').checked = !!D.set.shT;
   $$('#sgAl button').forEach(b => b.classList.toggle('on', +b.dataset.v === +D.set.al));
+  $('#setTf').value = D.set.tf; $('#setPm').value = D.set.pm; renderTfFormula(); renderCalNote();
 }
 $('#setCpk').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 0 && v < 10) { D.set.cpk = v; save(); renderSum(); toast('Coste por km: ' + nf2.format(v) + ' €. Se aplica a las jornadas nuevas.'); } else syncSettings(); };
 $('#setRf').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 1 && v <= 3) { D.set.rf = v; routeCache.clear(); save(); recalc(); } else syncSettings(); };
+function renderTfFormula() {
+  const ex = 30, n = 4; // ejemplo: 30 min del servicio de rutas, 3 paradas + vuelta
+  $('#tfFormula').innerHTML = `<b>Tiempo de rutas × ${fmtX(D.set.tf)} + ${D.set.pm} min por llegada</b><br>Ejemplo: 30 min de rutas con 3 paradas y vuelta = ${fmtDur(adjDur(ex, n))}.`;
+}
+function onTimeSet() { routeCache.clear(); save(); renderTfFormula(); renderCalNote(); recalc(); }
+$('#setTf').onchange = e => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (isFinite(v) && v >= 1 && v <= 2) { D.set.tf = Math.round(v * 100) / 100; onTimeSet(); } else { toast('El factor va de 1,00 a 2,00.'); syncSettings(); } };
+$('#setPm').onchange = e => { const v = parseInt(e.target.value, 10); if (isFinite(v) && v >= 0 && v <= 30) { D.set.pm = v; onTimeSet(); } else { toast('Entre 0 y 30 minutos.'); syncSettings(); } };
+// Calibrar: factor que reproduce lo mejor posible los tiempos reales anotados (suma real − aparcar) ÷ suma de rutas
+function calData() { const L = D.hist.filter(j => isReal(j) && j.tot.durRaw > 0); const real = L.reduce((a, j) => a + j.tot.durM - arrivals(j) * D.set.pm, 0), raw = L.reduce((a, j) => a + j.tot.durRaw, 0); return { n: L.length, tf: raw > 0 ? real / raw : null }; }
+function renderCalNote() { const el = $('#calS'); if (!el) return; const c = calData(); el.textContent = c.n ? `${c.n} jornada${c.n > 1 ? 's' : ''} con tiempo real anotado: el factor que mejor encaja es ×${fmtX(Math.min(2, Math.max(1, c.tf)))}.` : 'Anota el tiempo real de algunas jornadas (Historial › jornada › Tiempo real) y Rutahz calcula el factor.'; }
+$('#bCal').onclick = () => {
+  const c = calData();
+  if (!c.n) return dlg({ title: 'Calibrar el tiempo', text: 'Todavía no hay jornadas con tiempo real anotado.\n\nCuando termines una jornada, anota el tiempo real al volante al guardarla (o después, en Historial › la jornada › Tiempo real). Con 3–5 jornadas la calibración ya es fiable.', acts: [{ t: 'Entendido', v: null }] });
+  const raw = c.tf, tf = Math.round(Math.min(2, Math.max(1, raw)) * 20) / 20;
+  dlg({ title: 'Calibrar el tiempo', text: `Con ${c.n} jornada${c.n > 1 ? 's' : ''} con tiempo real y ${D.set.pm} min por llegada, el factor que mejor encaja es ×${fmtX(raw)}.${raw < 1 ? '\nSale por debajo de 1: tus tiempos reales son más rápidos que el servicio de rutas. Prueba a bajar los minutos por llegada.' : raw > 2 ? '\nSale muy alto: revisa que los tiempos anotados sean solo de conducción, sin las visitas.' : ''}${c.n < 3 ? '\nCon menos de 3 jornadas es orientativo.' : ''}`, ok: `Usar ×${fmtX(tf)}` })
+    .then(v => { if (v !== true) return; const old = D.set.tf; D.set.tf = tf; syncSettings(); onTimeSet(); toast(`Factor de tráfico: ×${fmtX(tf)}. Se aplica a las jornadas nuevas.`, { undo: () => { D.set.tf = old; syncSettings(); onTimeSet(); } }); });
+};
+$('#bTfAll').onclick = async () => {
+  const L = D.hist.filter(j => !isReal(j) && (j.tot.durRaw != null || j.tot.dur > 0));
+  if (!L.length) return toast('No hay jornadas estimadas que cambiar.');
+  if (!await ask('¿Aplicar al historial?', `Se recalcula el tiempo al volante de ${L.length} jornada${L.length > 1 ? 's' : ''} con ×${fmtX(D.set.tf)} y ${D.set.pm} min por llegada. Las que tienen tiempo real anotado no cambian. Se puede deshacer.`, 'Aplicar')) return;
+  const snap = L.map(j => [j, { ...j.tot }]);
+  L.forEach(j => { const raw = j.tot.durRaw != null ? j.tot.durRaw : j.tot.dur; j.tot.durRaw = raw; j.tot.tf = D.set.tf; j.tot.pm = D.set.pm; j.tot.dur = adjDur(raw, arrivals(j), D.set.tf, D.set.pm); });
+  save(); renderHist(); renderStats(); renderCalNote();
+  toast(`${L.length} jornada${L.length > 1 ? 's' : ''} actualizada${L.length > 1 ? 's' : ''}`, { undo: () => { snap.forEach(([j, t]) => { j.tot = t; }); save(); renderHist(); renderStats(); renderCalNote(); }, ms: 7000 });
+};
 $('#setRet').onchange = e => { D.set.ret = e.target.checked; save(); };
 $('#setUnl').onchange = e => { D.set.unl = e.target.checked; save(); applyScope(); toast(D.set.unl ? 'Mapa y búsqueda sin límites' : 'Mapa y búsqueda limitados a Mallorca'); };
 ['ShN', 'ShM', 'ShT'].forEach(k => $('#set' + k).onchange = e => { D.set['s' + k.slice(1, 2).toLowerCase() + k.slice(2)] = e.target.checked; save(); });
@@ -107,14 +134,14 @@ function fromV1Entry(j, cpkDef) {
   const t = j.totals || {}, road = num(t.road) || 0, cost = num(t.cost) || 0;
   let iso = /^\d{4}-\d{2}-\d{2}$/.test(j.iso || '') ? j.iso : '';
   return { id: 'v1-' + (j.id || uid()), label: String(j.label || 'Jornada').slice(0, 80), iso, start, stops, ret: false, legs: Array.isArray(j.legsKm) ? j.legsKm.map(Number) : [], notes: String(j.notes || ''),
-    tot: { road, dur: num(t.durationMin), cost, cpk: road ? cost / road : cpkDef, src: t.source === 'road' ? 'road' : 'straight', straight: num(t.straight) || 0 } };
+    tot: { road, dur: num(t.durationMin), cost, cpk: road ? cost / road : cpkDef, src: t.source === 'road' ? 'road' : 'straight', straight: num(t.straight) || 0, durM: null } };
 }
 function fromV2Entry(j) {
   const start = cleanPt(j.start); if (!start || !j.tot) return null; start.time = (j.start && j.start.time) || '';
   return { id: String(j.id || uid()), label: String(j.label || 'Jornada').slice(0, 80), iso: /^\d{4}-\d{2}-\d{2}$/.test(j.iso || '') ? j.iso : '', start,
     stops: (j.stops || []).map(s => { const p = cleanPt(s); return p ? { ...p, cid: s.cid || null } : null; }).filter(Boolean), ret: !!j.ret,
-    legs: Array.isArray(j.legs) ? j.legs.map(Number) : [], notes: String(j.notes || ''),
-    tot: { road: num(j.tot.road) || 0, dur: num(j.tot.dur), cost: num(j.tot.cost) || 0, cpk: num(j.tot.cpk), src: j.tot.src === 'road' ? 'road' : 'straight', straight: num(j.tot.straight) || 0 } };
+    legs: Array.isArray(j.legs) ? j.legs.map(Number) : [], legsDur: Array.isArray(j.legsDur) ? j.legsDur.map(Number) : [], notes: String(j.notes || ''),
+    tot: { road: num(j.tot.road) || 0, dur: num(j.tot.dur), durRaw: num(j.tot.durRaw), tf: num(j.tot.tf), pm: num(j.tot.pm), durM: num(j.tot.durM), cost: num(j.tot.cost) || 0, cpk: num(j.tot.cpk), src: j.tot.src === 'road' ? 'road' : 'straight', straight: num(j.tot.straight) || 0 } };
 }
 function importBackup(obj) {
   let hist = [], clients = [], fav = null, set = null, cur = null, prefs = null;
@@ -143,7 +170,7 @@ function importBackup(obj) {
   newH.forEach(j => j.stops.forEach(s => { if (s.cid && idMap.has(s.cid)) s.cid = idMap.get(s.cid); }));
   D.hist.push(...newH);
   if (!D.fav && fav) D.fav = fav;
-  if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); if (num(set.al) != null) D.set.al = num(set.al); }
+  if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); ['al', 'tf', 'pm'].forEach(k => { if (num(set[k]) != null) D.set[k] = num(set[k]); }); }
   if (!D.cur.stops.length && cur) { const st = cleanPt(cur.start); if (st) { const stops = (cur.stops || []).map(cleanPt).filter(Boolean).map(s => ({ ...s, id: uid(), cid: null })); if (stops.length) D.cur = { start: { ...st, time: '' }, stops, notes: String(cur.notes || ''), ret: typeof cur.ret === 'boolean' ? cur.ret : D.set.ret }; } }
   if (!D.cur.start && D.fav) D.cur.start = { ...D.fav, time: '' };
   if (fresh && prefs && typeof prefs === 'object') { ['th', 'fs', 'hc', 'rm', 'mc'].forEach(k => { if (prefs[k] != null) P[k] = prefs[k]; }); if (prefs.ah != null) { P.ah = prefs.ah; P.as = prefs.as; } saveP(); rzApply(P.ah, P.as); applyTheme(P.th || 'auto'); document.documentElement.style.setProperty('--fs', P.fs || 1); document.documentElement.classList.toggle('hc', !!P.hc); document.documentElement.classList.toggle('mapc', !!P.mc); renderAccent(); syncA11y(); }
@@ -235,6 +262,7 @@ function showHelp() {
       <li><b>Paradas.</b> Añade cada visita en orden: escribiendo un destino guardado o la dirección, con «Elegir en el mapa» o con el GPS. En <b>Destinos</b> guardas tus sitios habituales.</li>
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
+      <li><b>Tiempo.</b> El tiempo al volante es una estimación. Si anotas el real al guardar, es el que sale en los informes; con unos cuantos, Ajustes › Tiempo al volante › Calibrar ajusta la estimación a tu forma de conducir.</li>
       <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
       <li><b>Copia.</b> Los datos solo están en este móvil: haz copia en Ajustes › Datos.</li></ol>` });
 }

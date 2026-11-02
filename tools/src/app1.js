@@ -2,7 +2,7 @@
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-01-3';
+const VER = '2026-11-02-0';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -42,7 +42,7 @@ const ls = {
 
 /* =================== Datos =================== */
 const KEY = 'rz_data', PFK = 'rz_pf', PINK = 'rz_pin', MK = 'rz_meta';
-const DEF_SET = { cpk: 0.26, rf: 1.25, ret: true, unl: false, shN: true, shM: true, shT: false, al: 5 };
+const DEF_SET = { cpk: 0.26, rf: 1.25, ret: true, unl: false, shN: true, shM: true, shT: false, al: 5, tf: 1.15, pm: 2 };
 let D = { v: 2, cur: { start: null, stops: [], notes: '', ret: true }, hist: [], fav: null, clients: [], edit: null, set: { ...DEF_SET } };
 let P = ls.get(PFK, {}) || {};
 let M = ls.get(MK, {}) || {};
@@ -167,7 +167,12 @@ function placeLabel(r) {
 const TOWNS = [["Palma",39.5696,2.6502],["Calvià",39.5658,2.5051],["Andratx",39.5423,2.4256],["Port d'Andratx",39.5433,2.3856],["Peguera",39.5461,2.455],["Santa Ponça",39.5089,2.4683],["Esporles",39.6428,2.5892],["Valldemossa",39.7106,2.625],["Deià",39.7469,2.6486],["Sóller",39.7649,2.7147],["Bunyola",39.6997,2.7239],["Santa Maria del Camí",39.6353,2.7622],["Marratxí",39.6297,2.7514],["Alaró",39.7078,2.7994],["Binissalem",39.6875,2.8492],["Lloseta",39.7186,2.8339],["Sa Pobla",39.7717,3.0175],["Muro",39.7364,3.0578],["Santa Margalida",39.7011,3.1069],["Ca'n Picafort",39.7772,3.1519],["Sineu",39.6428,3.0114],["Inca",39.7217,2.9106],["Sencelles",39.6217,2.8894],["Algaida",39.5578,2.8842],["Montuïri",39.5642,2.9739],["Porreres",39.5153,3.0197],["Petra",39.6086,3.1058],["Santanyí",39.3556,3.1275],["Ses Salines",39.3164,3.0475],["Colònia de Sant Jordi",39.3197,2.9986],["Campos",39.4322,2.9714],["Llucmajor",39.4897,2.8917],["Felanitx",39.4694,3.1489],["Porto Colom",39.4283,3.2669],["Manacor",39.5694,3.2085],["Porto Cristo",39.5406,3.3211],["Sant Llorenç des Cardassar",39.6089,3.2789],["Son Servera",39.6106,3.3778],["Cala Millor",39.5936,3.3831],["Capdepera",39.7075,3.4342],["Cala Rajada",39.715,3.4689],["Artà",39.6953,3.3505],["Pollença",39.8762,3.0175],["Port de Pollença",39.9061,3.0842],["Alcúdia",39.8523,3.1219]];
 
 /* =================== Cálculo de rutas =================== */
-let R = { src: null, km: 0, straight: 0, legs: [], geom: null, dur: 0 };
+// Tiempo al volante = tiempo de OSRM (sin tráfico, a velocidad de la vía) × factor de tráfico + minutos por llegada (aparcar, maniobrar).
+// Cada jornada guarda el tiempo bruto de OSRM y los ajustes con los que se calculó, para poder explicarlo y recalcularlo.
+const adjDur = (raw, n, tf, pm) => (raw || 0) * (tf ?? D.set.tf) + (n || 0) * (pm ?? D.set.pm);
+const R0 = () => ({ src: null, km: 0, straight: 0, legs: [], legsDur: [], geom: null, durRaw: 0, dur: 0 });
+const OFF_KMH = 45; // sin conexión: velocidad media supuesta antes del factor de tráfico
+let R = R0();
 let routing = false, routeTok = 0;
 const routeCache = new Map();
 function pointsOf(c) {
@@ -178,24 +183,25 @@ function pointsOf(c) {
   return p;
 }
 async function computeRoute(points) {
-  if (points.length < 2) return { src: null, km: 0, straight: 0, legs: [], geom: null, dur: 0 };
+  if (points.length < 2) return R0();
   const sl = []; for (let i = 1; i < points.length; i++) sl.push(hav(points[i - 1], points[i]));
   const straight = sl.reduce((a, b) => a + b, 0);
   const key = points.map(p => (+p.lon).toFixed(5) + ',' + (+p.lat).toFixed(5)).join(';');
-  if (routeCache.has(key)) return routeCache.get(key);
+  if (routeCache.has(key)) { const c = routeCache.get(key); return { ...c, dur: adjDur(c.durRaw, c.legs.length) }; }
   if (navigator.onLine) {
     try {
       const d = await api('/r/' + key, `https://router.project-osrm.org/route/v1/driving/${key}?overview=full&geometries=geojson&steps=false`);
       if (d && d.code === 'Ok' && d.routes && d.routes.length) {
         const r = d.routes[0];
-        const res = { src: 'road', km: r.distance / 1000, straight, legs: r.legs.map(l => l.distance / 1000), geom: r.geometry.coordinates.map(c => [c[1], c[0]]), dur: r.duration / 60 };
+        const res = { src: 'road', km: r.distance / 1000, straight, legs: r.legs.map(l => l.distance / 1000), legsDur: r.legs.map(l => l.duration / 60), geom: r.geometry.coordinates.map(c => [c[1], c[0]]), durRaw: r.duration / 60 };
         routeCache.set(key, res); if (routeCache.size > 80) routeCache.delete(routeCache.keys().next().value);
-        return res;
+        return { ...res, dur: adjDur(res.durRaw, res.legs.length) };
       }
     } catch (e) { console.warn('Ruta: sin respuesta del servicio, se usa la estimación', e); }
   }
   const rf = D.set.rf || 1.25;
-  return { src: 'straight', km: straight * rf, straight, legs: sl.map(k => k * rf), geom: null, dur: straight * rf / 40 * 60 };
+  const legs = sl.map(k => k * rf), legsDur = legs.map(k => k / OFF_KMH * 60), durRaw = legsDur.reduce((a, b) => a + b, 0);
+  return { src: 'straight', km: straight * rf, straight, legs, legsDur, geom: null, durRaw, dur: adjDur(durRaw, legs.length) };
 }
 async function recalc() {
   const my = ++routeTok;

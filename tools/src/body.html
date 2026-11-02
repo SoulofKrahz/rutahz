@@ -45,6 +45,7 @@
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9M12 17.2h.01"/></symbol>
 <symbol id="i-dest" viewBox="0 0 24 24"><path d="M12 21.5s-7-6.1-7-11.6a7 7 0 0 1 14 0c0 5.5-7 11.6-7 11.6z"/><path d="m12 6.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"/></symbol>
 <symbol id="i-sort" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
 <symbol id="i-bigpin" viewBox="0 0 44 54"><path d="M22 52S4 34.6 4 21a18 18 0 0 1 36 0c0 13.6-18 31-18 31z" fill="currentColor" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="6.5" fill="#fff" stroke="none"/></symbol>
 </defs></svg>
 
@@ -87,7 +88,7 @@
       <button class="tab on" data-v="ruta"><svg class="i"><use href="#i-route"/></svg>Ruta</button>
       <button class="tab" data-v="dest"><svg class="i"><use href="#i-dest"/></svg>Destinos</button>
       <button class="tab" data-v="hist"><svg class="i"><use href="#i-hist"/></svg>Historial</button>
-      <button class="tab" data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Estadísticas</button>
+      <button class="tab" data-v="stats"><svg class="i"><use href="#i-chart"/></svg>Resumen</button>
       <button class="tab" data-v="ajustes"><svg class="i"><use href="#i-cog"/></svg>Ajustes</button>
     </nav>
 
@@ -167,7 +168,7 @@
 
     <!-- ===== ESTADÍSTICAS ===== -->
     <section class="view" id="v-stats" hidden>
-      <div class="vh"><div><h1>Estadísticas</h1><p>Solo jornadas guardadas</p></div></div>
+      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div></div>
       <div id="statsBox" style="display:flex;flex-direction:column;gap:14px"></div>
     </section>
 
@@ -180,6 +181,13 @@
           <div class="row"><div><b>Coste por km</b><small>En euros. Cada jornada guarda el valor del día en que se guardó.</small></div><input class="inp" id="setCpk" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Coste por kilómetro"></div>
           <div class="row"><div><b>Volver al punto de partida</b><small>Valor por defecto para cada jornada nueva.</small></div><label class="sw"><input type="checkbox" id="setRet" aria-label="Volver al punto de partida por defecto"><span></span></label></div>
           <div class="row"><div><b>Ajuste sin conexión</b><small>Sin cobertura se mide en línea recta y se multiplica por este número. La jornada queda como «estimada» y se puede recalcular después.</small></div><input class="inp" id="setRf" type="number" inputmode="decimal" step="0.05" min="1" max="3" aria-label="Ajuste sin conexión"></div>
+        </section>
+        <section class="card set"><h2>Tiempo al volante</h2><p>El servicio de rutas calcula el tiempo a la velocidad de cada vía, sin tráfico ni aparcar, y suele quedarse corto. Rutahz lo ajusta así:</p>
+          <div class="fm" id="tfFormula" style="margin-bottom:6px"></div>
+          <div class="row"><div><b>Factor de tráfico</b><small>1,00 = sin ajuste. 1,15 = un 15 % más lento que la vía libre.</small></div><input class="inp" id="setTf" type="number" inputmode="decimal" step="0.05" min="1" max="2" aria-label="Factor de tráfico"></div>
+          <div class="row"><div><b>Minutos por llegada</b><small>Aparcar y llegar a la puerta, en cada parada y en la vuelta.</small></div><input class="inp" id="setPm" type="number" inputmode="numeric" step="1" min="0" max="30" aria-label="Minutos por llegada"></div>
+          <div class="row"><div><b>Calibrar con tus tiempos reales</b><small id="calS">Anota el tiempo real de algunas jornadas (Historial › jornada › Tiempo real) y Rutahz calcula el factor.</small></div><button class="btn g sm" id="bCal">Calibrar</button></div>
+          <div class="row"><div><b>Aplicar al historial</b><small>Recalcula con estos ajustes las jornadas guardadas. Las que tienen tiempo real anotado no cambian.</small></div><button class="btn g sm" id="bTfAll">Aplicar</button></div>
         </section>
         <section class="card set"><h2>Punto de partida habitual</h2><p>Cada jornada nueva empieza aquí. Márcalo con la estrella en «Punto de partida».</p><div id="favBox"></div></section>
         <section class="card set"><h2>Destinos</h2><p>Tus sitios habituales: se añaden a la ruta en un toque y se cuentan las visitas.</p><button class="btn g w" id="bGoDest"><svg class="i"><use href="#i-dest"/></svg>Gestionar destinos</button></section>
