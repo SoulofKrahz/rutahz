@@ -241,6 +241,42 @@ test('corregir un destino', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6f · Jornadas exportadas: marca al exportar, filtro, «cambiada tras exportar», solo pendientes y marcar a mano */
+test('jornadas exportadas', async ({ browser, base }) => {
+  const n = new Date(), pm = new Date(n.getFullYear(), n.getMonth() - 1, 1), iso = (d, day) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const A = P(39.7217, 2.9106, 'Casa de M.');
+  const d = data({ hist: [day('h1', iso(pm, 10), [{ ...A }]), day('h2', iso(pm, 11), [{ ...A }]), day('h3', iso(pm, 12), [{ ...A }]), day('h4', iso(n, 1), [{ ...A }])] });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true });
+  await p.click('.bb button[data-v="hist"]');
+  ok(await p.locator('.hi .chip:has-text("exportada")').count() === 0, 'al principio ninguna sale como exportada');
+  const excel = async (only) => {
+    await p.click('#bExport'); await p.waitForSelector('#exP'); await p.selectOption('#exP', only ? 'todo' : 'ant');
+    if (only) { ok(await p.isVisible('#exO'), 'el informe ofrece «Solo las pendientes» → ' + await p.textContent('#exN')); await p.check('#exO'); }
+    const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 5000 }).catch(() => null), p.click('.dlg .acts button:has-text("Excel")')]);
+    await p.waitForTimeout(300); return dl ? fs.readFileSync(await dl.path(), 'utf8') : '';
+  };
+  await excel(false);
+  ok(await p.locator('.hi .chip:has-text("exportada")').count() === 3, 'el Excel del mes anterior marca sus 3 jornadas como exportadas');
+  ok(await p.locator('.gh .gx:has-text("exportado")').count() === 1 && await p.locator('.gh .gx:has-text("1 sin exportar")').count() === 1, 'cada mes dice si está exportado o cuántas faltan');
+  await p.click('#sgHf button[data-f="pend"]');
+  ok(await p.locator('.hi').count() === 1, 'el filtro «Sin exportar» deja solo la pendiente');
+  await p.click('#sgHf button[data-f="all"]');
+  // cambiar una exportada
+  await p.click(`.hi[data-id="h2"]`); await p.click('.amb:has-text("Anotar el tiempo real")'); await p.fill('#rtm', '55'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  ok(await p.locator('.hi[data-id="h2"] .chip:has-text("cambiada tras exportar")').count() === 1, 'si cambia después de exportarla sale «cambiada tras exportar»');
+  ok(await p.isVisible('#sgHf button[data-f="chg"]'), 'y aparece el filtro «Cambiadas»');
+  const csv = await excel(true), rows = csv.split('\n').filter(l => /^\d{2}\/\d{2}\/\d{4};/.test(l));
+  ok(rows.length === 2, `«Solo las pendientes» exporta la cambiada y la sin exportar (${rows.length} filas)`);
+  ok(await p.locator('.hi .chip:has-text("cambiada")').count() === 0 && await p.locator('.hi .chip:has-text("exportada")').count() === 4, 'después las 4 quedan exportadas');
+  await p.click('.hi[data-id="h4"]'); await p.click('.amb:has-text("Exportada el")'); await p.waitForTimeout(200);
+  ok(await p.locator('.hi[data-id="h4"] .chip:has-text("exportada")').count() === 0, 'se puede marcar una como no exportada');
+  await p.click('#bMarkExp'); await p.selectOption('#mxP', 'todo'); await p.click('.dlg .acts button:has-text("Marcar")'); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => __rz.D.hist.every(j => j.exp)), '«Marcar como exportadas…» marca las del periodo');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

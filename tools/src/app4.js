@@ -146,6 +146,7 @@ function fromV2Entry(j) {
   return { id: String(j.id || uid()), label: String(j.label || 'Jornada').slice(0, 80), iso: /^\d{4}-\d{2}-\d{2}$/.test(j.iso || '') ? j.iso : '', start,
     stops: (j.stops || []).map(s => { const p = cleanPt(s); return p ? { ...p, cid: s.cid || null } : null; }).filter(Boolean), ret: !!j.ret,
     legs: Array.isArray(j.legs) ? j.legs.map(Number) : [], legsDur: Array.isArray(j.legsDur) ? j.legsDur.map(Number) : [], notes: String(j.notes || ''),
+    ...(j.exp && /^\d{4}-\d{2}-\d{2}$/.test(j.exp.d) ? { exp: { d: j.exp.d, k: String(j.exp.k || 'Excel').slice(0, 20), sig: String(j.exp.sig || '') } } : {}),
     tot: { road: num(j.tot.road) || 0, dur: num(j.tot.dur), durRaw: num(j.tot.durRaw), tf: num(j.tot.tf), pm: num(j.tot.pm), durM: num(j.tot.durM), cost: num(j.tot.cost) || 0, cpk: num(j.tot.cpk), src: j.tot.src === 'road' ? 'road' : 'straight', straight: num(j.tot.straight) || 0 } };
 }
 function importBackup(obj) {
@@ -258,6 +259,11 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-14', d: '2026-11-02', t: 'Qué jornadas ya has exportado', i: [
+    'Al sacar un Excel o un informe, cada jornada queda marcada como <b>exportada</b> con su fecha. En el Historial lo ves en cada jornada y en cada mes.',
+    'Filtro <b>Sin exportar</b> en el Historial, y en el informe la opción <b>Solo las pendientes</b>.',
+    'Si cambias una jornada después de exportarla (km, tiempo, paradas…), sale como <b>cambiada tras exportar</b>.',
+    'Para lo que ya enviaste antes: <b>Historial › Marcar como exportadas…</b>'] },
   { v: '2026-11-02-13', d: '2026-11-02', t: 'Corregir un destino, de verdad', i: [
     'Al <b>corregir la ubicación</b> de un destino se corrige también en la ruta de hoy, y te pregunta si quieres corregir las jornadas guardadas: recalcula sus km y te dice cuánto cambian, con opción de deshacer.',
     'Al <b>cambiar el nombre</b>, te pregunta si cambiarlo también en el historial.',

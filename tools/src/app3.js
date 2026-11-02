@@ -76,6 +76,7 @@ $('#bEditOk').onclick = async () => {
   const e = entryFromCur({ ...det, id: D.edit.snap.id });
   if (R.src !== 'road' && D.edit.snap.tot.src === 'road' && pointsEqual(D.edit.snap, D.cur)) { e.tot = { ...D.edit.snap.tot, durM: det.durM ?? null }; e.legs = D.edit.snap.legs || e.legs; e.legsDur = D.edit.snap.legsDur || e.legsDur; } // sin cambios de puntos: conserva la cifra real
   e.tot.cpk = D.edit.snap.tot.cpk ?? D.set.cpk; e.tot.cost = e.tot.road * e.tot.cpk;
+  if (D.edit.snap.exp) e.exp = D.edit.snap.exp;
   D.hist.push(e); D.cur = D.edit.prevCur || newCur(); D.edit = null;
   save(); renderAll(); recalc();
   toast('Cambios guardados en «' + e.label + '»');
@@ -102,6 +103,13 @@ function repeatEntry(j) {
 
 /* =================== Historial =================== */
 const est = j => j.tot && j.tot.src !== 'road';
+/* ---- Exportadas: cada jornada recuerda cuándo salió en un Excel o informe y con qué datos ----
+   Si después cambian sus km, tiempo, fecha, nombre o paradas, queda como «cambiada tras exportar». */
+const expSig = j => [j.iso, j.label, (j.tot.road || 0).toFixed(1), Math.round(jDur(j) || 0), j.ret ? 1 : 0, j.stops.map(s => s.label || '').join('·')].join('|');
+const expOf = j => !j.exp ? '' : j.exp.sig === expSig(j) ? 'ok' : 'chg';
+const pendingExp = j => expOf(j) !== 'ok';
+function markExported(list, k) { const d = today(); list.forEach(j => { j.exp = { d, k, sig: expSig(j) }; }); save(); renderHist(); }
+let hF = 'all';
 function histSheet(j) {
   sheet({ title: j.label, sub: `${fmtDate(j.iso)} · ${fmtKm(j.tot.road)}`, items: [
     { icon: 'eye', label: 'Ver en el mapa', fn: () => showHistOnMap(j) },
@@ -109,6 +117,9 @@ function histSheet(j) {
     { icon: 'rep', label: 'Repetir como ruta nueva', fn: () => repeatEntry(j) },
     { icon: 'clock', label: isReal(j) ? 'Tiempo real: ' + fmtDur(j.tot.durM) : 'Anotar el tiempo real al volante', sub: isReal(j) ? 'Estimado: ' + fmtDur(j.tot.dur) : 'Estimado: ' + fmtDur(j.tot.dur) + ' · el real es el que vale en los informes', fn: () => setRealTime(j) },
     { icon: 'edit', label: 'Editar', fn: () => startEdit(j) },
+    expOf(j) === 'ok' ? { icon: 'ck', label: `Exportada el ${fmtDate(j.exp.d, { day: 'numeric', month: 'long' })} (${j.exp.k})`, sub: 'Toca para marcarla como no exportada', fn: () => { const o = j.exp; delete j.exp; save(); renderHist(); toast('Marcada como no exportada', { undo: () => { j.exp = o; save(); renderHist(); } }); } }
+      : expOf(j) === 'chg' ? { icon: 'info', label: 'Cambiada después de exportarla', sub: `Se exportó el ${fmtDate(j.exp.d, { day: 'numeric', month: 'long' })}. Si ya la has corregido en la empresa, márcala como exportada`, fn: () => { markExported([j], j.exp.k); toast('Marcada como exportada'); } }
+      : { icon: 'ck', label: 'Marcar como exportada', sub: 'Si ya la enviaste a la empresa por otro lado', fn: () => { markExported([j], 'a mano'); toast('Marcada como exportada', { undo: () => { delete j.exp; save(); renderHist(); } }); } },
     est(j) && { icon: 'refresh', label: 'Recalcular por carretera', sub: 'Ahora es una estimación sin conexión', fn: () => recalcEntries([j]) },
     { icon: 'trash', label: 'Eliminar', danger: true, fn: () => {
       const i = D.hist.indexOf(j); if (i < 0) return; D.hist.splice(i, 1); if (viewingHist === j) closeHistView();
@@ -129,26 +140,47 @@ function setRealTime(j) {
 }
 function renderHist() {
   const q = norm($('#hq').value), all = D.hist.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '') || String(b.id).localeCompare(String(a.id)));
-  const list = q ? all.filter(j => norm(j.label).includes(q) || norm(j.notes).includes(q) || j.stops.some(s => norm(s.label).includes(q))) : all;
+  const anyExp = D.hist.some(j => j.exp), nPend = D.hist.filter(pendingExp).length, nChg = D.hist.filter(j => expOf(j) === 'chg').length;
+  if (!anyExp && hF !== 'all') hF = 'all'; if (hF === 'chg' && !nChg) hF = 'pend';
+  $('#histF').innerHTML = !D.hist.length ? '' : `<div class="seg" id="sgHf" role="group" aria-label="Filtrar por exportación"><button data-f="all" class="${hF === 'all' ? 'on' : ''}">Todas</button><button data-f="pend" class="${hF === 'pend' ? 'on' : ''}">Sin exportar${nPend ? ' · ' + nPend : ''}</button>${nChg ? `<button data-f="chg" class="${hF === 'chg' ? 'on' : ''}">Cambiadas · ${nChg}</button>` : ''}</div>`
+    + (nPend ? `<button class="lnk" id="bMarkExp" style="align-self:flex-start;font-size:.8125rem">${ic('ck')}Marcar como exportadas…</button>` : '');
+  $$('#sgHf button').forEach(b => b.onclick = () => { hF = b.dataset.f; renderHist(); });
+  if ($('#bMarkExp')) $('#bMarkExp').onclick = markExpDlg;
+  const fl = hF === 'pend' ? all.filter(pendingExp) : hF === 'chg' ? all.filter(j => expOf(j) === 'chg') : all;
+  const list = q ? fl.filter(j => norm(j.label).includes(q) || norm(j.notes).includes(q) || j.stops.some(s => norm(s.label).includes(q))) : fl;
   $('#histSub').textContent = D.hist.length ? `${D.hist.length} jornada${D.hist.length > 1 ? 's' : ''} · ${fmtKm0(D.hist.reduce((a, j) => a + (j.tot.road || 0), 0))}` : '';
   const nEst = D.hist.filter(est).length;
   $('#recalcBox').innerHTML = nEst ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nEst} jornada${nEst > 1 ? 's' : ''} con distancia estimada (sin conexión al guardar).</span><button class="btn sm" id="bRecalcAll">${ic('refresh')}Recalcular</button></div>` : '';
   if (nEst) $('#bRecalcAll').onclick = () => recalcEntries(D.hist.filter(est));
   const el = $('#histList');
   if (!D.hist.length) { el.innerHTML = `<div class="card empty"><b>Todavía no hay jornadas</b>Cuando termines una ruta, pulsa «Guardar jornada».<br><button class="lnk" id="hImp" style="margin-top:10px">¿Tienes una copia de la versión anterior? Restáurala</button></div>`; $('#hImp').onclick = () => $('#bkIn').click(); return; }
-  if (!list.length) { el.innerHTML = `<div class="empty"><b>Sin resultados</b>Prueba con otro nombre de cliente o jornada.</div>`; return; }
+  if (!list.length) { el.innerHTML = hF === 'pend' && !q ? `<div class="empty"><b>Todo exportado</b>No hay jornadas pendientes de enviar a la empresa.</div>` : `<div class="empty"><b>Sin resultados</b>Prueba con otro nombre de cliente o jornada.</div>`; return; }
   const groups = new Map();
   list.forEach(j => { const k = (j.iso || '').slice(0, 7) || '—'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(j); });
   let h = '';
   for (const [k, items] of groups) {
     const km = items.reduce((a, j) => a + (j.tot.road || 0), 0), lab = k === '—' ? 'Sin fecha' : dOf(k + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-    h += `<div class="gh">${esc(lab)}<span>${items.length} jornada${items.length > 1 ? 's' : ''} · ${fmtKm0(km)}</span></div>`;
-    h += items.map(j => { const d = dOf(j.iso); return `<button class="hi" data-id="${esc(j.id)}"><span class="dd"><b>${j.iso ? d.getDate() : '—'}</b><small>${j.iso ? d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '') : ''}</small></span><span class="bd"><h3>${esc(j.label)}</h3><span class="mt"><span class="chip m">${j.stops.length} parada${j.stops.length > 1 ? 's' : ''}</span>${j.ret ? `<span class="chip m">${ic('ret')}vuelta</span>` : ''}${est(j) ? `<span class="chip w">${ic('off')}estimada</span>` : ''}${jDur(j) > 0 ? `<span class="chip ${isReal(j) ? '' : 'm'}">${ic('clock')}${fmtDur(jDur(j))}${isReal(j) ? ' · real' : ''}</span>` : ''}</span>${j.notes ? `<span class="nt">${esc(j.notes)}</span>` : ''}</span><span class="km"><b>${fmtKm(j.tot.road)}</b><small>${fmtEur(j.tot.cost)}</small></span></button>`; }).join('');
+    const gm = D.hist.filter(j => (j.iso || '').slice(0, 7) === k), gn = gm.filter(j => !j.exp).length, gc = gm.filter(j => expOf(j) === 'chg').length;
+    const gx = !anyExp ? '' : !gn && !gc ? ` · <b class="gx">${ic('ck')}exportado</b>` : ` · <b class="gx w">${[gn && `${gn} sin exportar`, gc && `${gc} cambiada${gc > 1 ? 's' : ''}`].filter(Boolean).join(', ')}</b>`;
+    h += `<div class="gh">${esc(lab)}<span>${items.length} jornada${items.length > 1 ? 's' : ''} · ${fmtKm0(km)}${gx}</span></div>`;
+    h += items.map(j => { const d = dOf(j.iso); return `<button class="hi" data-id="${esc(j.id)}"><span class="dd"><b>${j.iso ? d.getDate() : '—'}</b><small>${j.iso ? d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '') : ''}</small></span><span class="bd"><h3>${esc(j.label)}</h3><span class="mt"><span class="chip m">${j.stops.length} parada${j.stops.length > 1 ? 's' : ''}</span>${j.ret ? `<span class="chip m">${ic('ret')}vuelta</span>` : ''}${est(j) ? `<span class="chip w">${ic('off')}estimada</span>` : ''}${jDur(j) > 0 ? `<span class="chip ${isReal(j) ? '' : 'm'}">${ic('clock')}${fmtDur(jDur(j))}${isReal(j) ? ' · real' : ''}</span>` : ''}${expOf(j) === 'ok' ? `<span class="chip">${ic('ck')}exportada ${esc(fmtDate(j.exp.d, { day: 'numeric', month: 'short' }))}</span>` : expOf(j) === 'chg' ? `<span class="chip w">${ic('info')}cambiada tras exportar</span>` : ''}</span>${j.notes ? `<span class="nt">${esc(j.notes)}</span>` : ''}</span><span class="km"><b>${fmtKm(j.tot.road)}</b><small>${fmtEur(j.tot.cost)}</small></span></button>`; }).join('');
   }
   el.innerHTML = h;
   el.querySelectorAll('.hi').forEach(b => b.onclick = () => { const j = D.hist.find(x => String(x.id) === b.dataset.id); if (j) histSheet(j); });
 }
 $('#hq').addEventListener('input', renderHist);
+function markExpDlg() {
+  dlg({ title: 'Marcar como exportadas', text: 'Para las jornadas que ya enviaste a la empresa antes de que Rutahz lo apuntara, o por otro camino.',
+    html: `<div><label class="lb">Periodo</label><select class="inp" id="mxP"><option value="ant">Mes anterior</option><option value="mes">Este mes</option><option value="ano">Este año</option><option value="todo">Todo</option><option value="fec">Entre fechas…</option></select>
+      <div class="brow" id="mxF" style="margin-top:8px" hidden><input class="inp" type="date" id="mxA" style="flex:1" aria-label="Desde"><input class="inp" type="date" id="mxB" style="flex:1" aria-label="Hasta"></div><p class="hint" id="mxN" style="margin-top:6px"></p></div>`,
+    ok: 'Marcar',
+    open: b => { const sP = b.querySelector('#mxP'), A = b.querySelector('#mxA'), Z = b.querySelector('#mxB'); const n = new Date(); A.value = isoOf(new Date(n.getFullYear(), n.getMonth() - 1, 1)); Z.value = today();
+      const upd = () => { b.querySelector('#mxF').hidden = sP.value !== 'fec'; const [a, z] = periodRange(sP.value, A.value, Z.value), l = D.hist.filter(j => j.iso >= a && j.iso <= z && pendingExp(j)); b.querySelector('#mxN').textContent = l.length ? `${l.length} jornada${l.length > 1 ? 's' : ''} sin exportar en ese periodo.` : 'Ese periodo ya está todo exportado.'; };
+      sP.onchange = A.onchange = Z.onchange = upd; upd(); },
+    check: b => ({ p: b.querySelector('#mxP').value, a: b.querySelector('#mxA').value, z: b.querySelector('#mxB').value })
+  }).then(r => { if (!r) return; const [a, z] = periodRange(r.p, r.a, r.z), l = D.hist.filter(j => j.iso >= a && j.iso <= z && pendingExp(j)); if (!l.length) return; markExported(l, 'a mano');
+    toast(`${l.length} jornada${l.length > 1 ? 's' : ''} marcada${l.length > 1 ? 's' : ''} como exportada${l.length > 1 ? 's' : ''}`, { undo: () => { l.forEach(j => delete j.exp); save(); renderHist(); } }); });
+}
 let recalcBusy = false;
 // Pone en una jornada guardada los km y tiempos de una ruta recién calculada, con su €/km y sus ajustes de tiempo
 function applyRoute(j, r) {
@@ -282,26 +314,30 @@ function exportDlg(pre) {
     title: 'Informe y Excel',
     acts: [{ t: 'Cancelar', cls: 'g', v: null }, { t: 'Excel', cls: 'g', v: 'csv', icon: 'sheet' }, { t: 'Informe / PDF', v: 'pdf', icon: 'file' }],
     html: `<div><label class="lb">Periodo</label><select class="inp" id="exP"><option value="mes">Este mes</option><option value="ant">Mes anterior</option><option value="ano">Este año</option><option value="todo">Todo</option><option value="fec">Entre fechas…</option></select>
-      <div class="brow" id="exF" style="margin-top:8px" hidden><input class="inp" type="date" id="exA" style="flex:1" aria-label="Desde"><input class="inp" type="date" id="exB" style="flex:1" aria-label="Hasta"></div><p class="hint" id="exN" style="margin-top:6px"></p></div>
+      <div class="brow" id="exF" style="margin-top:8px" hidden><input class="inp" type="date" id="exA" style="flex:1" aria-label="Desde"><input class="inp" type="date" id="exB" style="flex:1" aria-label="Hasta"></div><p class="hint" id="exN" style="margin-top:6px"></p>
+      <label id="exOw" style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.875rem" hidden><input type="checkbox" id="exO" style="width:20px;height:20px;accent-color:var(--em2)"><span id="exOt"></span></label></div>
       <div><label class="lb">Columnas del informe</label>${cb('salida', 'Hora de salida')}${cb('paradas', 'Número de paradas')}${cb('km', 'Kilómetros')}${cb('tiempo', 'Tiempo al volante')}${cb('coste', 'Coste estimado')}${cb('notas', 'Notas')}${cb('det', 'Recorrido de cada jornada: paradas con km y tiempo por tramo (con nombres)')}</div>
       <div><label class="lb">Excel</label><select class="inp" id="exK"><option value="res">Una fila por jornada</option><option value="det">Una fila por parada (detalle)</option></select></div>`,
     open: b => {
       const sP = b.querySelector('#exP'); sP.value = per;
-      const upd = () => { b.querySelector('#exF').hidden = sP.value !== 'fec'; const [a, z] = periodRange(sP.value, b.querySelector('#exA').value, b.querySelector('#exB').value); const l = D.hist.filter(j => j.iso >= a && j.iso <= z); b.querySelector('#exN').textContent = `${l.length} jornada${l.length === 1 ? '' : 's'} · ${fmtKm(l.reduce((s, j) => s + (j.tot.road || 0), 0))}`; };
+      const upd = () => { b.querySelector('#exF').hidden = sP.value !== 'fec'; const [a, z] = periodRange(sP.value, b.querySelector('#exA').value, b.querySelector('#exB').value); const l = D.hist.filter(j => j.iso >= a && j.iso <= z); const nx = l.filter(j => expOf(j) === 'ok').length, nc = l.filter(j => expOf(j) === 'chg').length, np = l.length - nx;
+        b.querySelector('#exN').textContent = `${l.length} jornada${l.length === 1 ? '' : 's'} · ${fmtKm(l.reduce((s, j) => s + (j.tot.road || 0), 0))}` + (nx || nc ? ` · ${nx} ya exportada${nx === 1 ? '' : 's'}${nc ? `, ${nc} cambiada${nc === 1 ? '' : 's'} después` : ''}` : '');
+        b.querySelector('#exOw').hidden = !nx || !np; b.querySelector('#exOt').textContent = `Solo las pendientes (${np}: sin exportar${nc ? ' o cambiadas' : ''})`; };
       sP.onchange = upd; b.querySelector('#exA').onchange = upd; b.querySelector('#exB').onchange = upd;
       const n = new Date(); b.querySelector('#exA').value = isoOf(new Date(n.getFullYear(), n.getMonth(), 1)); b.querySelector('#exB').value = today(); upd();
     },
     check: (b, v) => {
       const c = {}; b.querySelectorAll('[data-c]').forEach(x => c[x.dataset.c] = x.checked);
-      return { v, p: b.querySelector('#exP').value, a: b.querySelector('#exA').value, z: b.querySelector('#exB').value, c, k: b.querySelector('#exK').value };
+      return { v, p: b.querySelector('#exP').value, a: b.querySelector('#exA').value, z: b.querySelector('#exB').value, c, k: b.querySelector('#exK').value, o: !b.querySelector('#exOw').hidden && b.querySelector('#exO').checked };
     }
   }).then(r => {
     if (!r) return;
     M.exP = r.p === 'fec' ? M.exP : r.p; M.exC = r.c; saveM();
-    const [a, z, lab] = periodRange(r.p, r.a, r.z), list = D.hist.filter(j => j.iso >= a && j.iso <= z).sort((x, y) => (x.iso || '').localeCompare(y.iso || ''));
+    const [a, z, lab] = periodRange(r.p, r.a, r.z), list = D.hist.filter(j => j.iso >= a && j.iso <= z && (!r.o || pendingExp(j))).sort((x, y) => (x.iso || '').localeCompare(y.iso || ''));
     if (!list.length) return toast('No hay jornadas en ese periodo.');
     if (r.v === 'pdf') printReport(list, lab, r.c);
     else exportCSV(list, lab, r.k, a, z);
+    markExported(list, r.v === 'pdf' ? 'informe' : 'Excel');
   });
 }
 $('#bExport').onclick = () => exportDlg(); $('#bExport2').onclick = () => exportDlg();

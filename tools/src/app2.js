@@ -444,7 +444,7 @@ async function moveDest(c, lat, lon, addr) {
   const msg = `«${c.label}» movido${today ? ', también en la ruta de hoy' : ''}`;
   if (!js.length) return toast(msg);
   const sumKm = js.reduce((a, j) => a + (j.tot.road || 0), 0);
-  const v = await dlg({ title: '¿Corregir también el historial?', text: `«${c.label}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} (${fmtKm(sumKm)} en total) con la ubicación anterior. Si las corriges, se recalculan sus km y tiempos por carretera${js.some(isReal) ? '; el tiempo real que anotaste no cambia' : ''}. Si ya enviaste el informe de esos días, sus km cambiarán.`
+  const v = await dlg({ title: '¿Corregir también el historial?', text: `«${c.label}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} (${fmtKm(sumKm)} en total) con la ubicación anterior. Si las corriges, se recalculan sus km y tiempos por carretera${js.some(isReal) ? '; el tiempo real que anotaste no cambia' : ''}. ${js.some(j => j.exp) ? ` ${js.filter(j => j.exp).length} ya ${js.filter(j => j.exp).length === 1 ? 'está exportada' : 'están exportadas'}: si las corriges, saldrán como «cambiada tras exportar».` : ' Si ya enviaste el informe de esos días, sus km cambiarán.'}`
       + (navigator.onLine ? '' : '\n\nAhora no tienes conexión: elige «Solo desde ahora» y repite «Corregir la ubicación» con cobertura (en el mismo sitio vale).'),
     acts: [{ t: 'Solo desde ahora', cls: 'g', v: false }, { t: `Corregir ${js.length}`, v: true }] });
   if (!v || !navigator.onLine) return toast(msg + '. El historial no cambia.');
