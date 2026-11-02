@@ -258,6 +258,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-10', d: '2026-11-02', t: 'Más fácil de tocar', i: [
+    'Los interruptores de <b>Ajustes</b> y la lista de <b>Destinos más visitados</b> tienen más zona para el dedo en el móvil.'] },
   { v: '2026-11-02-9', d: '2026-11-02', t: 'De un destino a sus visitas', i: [
     'En <b>Destinos › Ver sus visitas</b>, toca una visita y se abre esa jornada con el mapa en ese sitio.',
     'Lo mismo en <b>Resumen › Destinos más visitados</b>: las fechas llevan a la jornada.'] },

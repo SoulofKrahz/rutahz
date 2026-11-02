@@ -1,0 +1,9 @@
+{"state":{"start":{"lat":39.5696,"lon":2.6502,"label":"Oficina","time":"08:10"},"stops":[],"notes":"","settings":{"roadFactor":1.3,"costPerKm":0.26,"mapUnlocked":false},"mode":"add-stop"},
+"history":[
+{"id":"1729000000001","label":"Ruta 2026-10-14","date":"martes, 14 de octubre de 2026","iso":"2026-10-14","start":{"lat":39.5696,"lon":2.6502,"label":"Oficina","time":"08:05"},"stops":[{"id":"a","lat":39.7217,"lon":2.9106,"label":"Casa de María (Inca)","time":"09:00"},{"id":"b","lat":39.6875,"lon":2.8492,"label":"Casa de Juan","time":"10:30"},{"id":"c","lat":39.5696,"lon":2.6502,"label":"Oficina","time":"12:00"}],"legsKm":[31.2,7.9,24.4],"notes":"","totals":{"straight":48.1,"road":63.5,"cost":16.51,"source":"road","durationMin":58}},
+{"id":"1729000000002","label":"Ruta 2026-10-21","date":"martes, 21 de octubre de 2026","iso":"2026-10-21","start":{"lat":39.5696,"lon":2.6502,"label":"Oficina"},"stops":[{"id":"d","lat":39.4897,"lon":2.8917,"label":"Casa de Pep (Llucmajor)"}],"legsKm":[28.1],"notes":"Sin cobertura en Llucmajor","totals":{"straight":21.6,"road":28.1,"cost":7.31,"source":"straight","durationMin":42}},
+{"id":"1729000000003","label":"Ruta 2026-10-28","iso":"2026-10-28","start":{"lat":39.5696,"lon":2.6502,"label":"Oficina"},"stops":[{"id":"e","lat":39.7217,"lon":2.9106,"label":"Casa de María (Inca)"},{"lat":"bad","lon":2.1,"label":"roto"}],"legsKm":[31.2],"notes":"","totals":{"road":31.2,"cost":8.11,"source":"road","durationMin":28}}
+],
+"favorite":{"lat":39.5696,"lon":2.6502,"label":"Oficina"},
+"clients":[{"id":"c1","lat":39.7217,"lon":2.9106,"label":"Casa de María (Inca)"},{"id":"c2","lat":39.6875,"lon":2.8492,"label":"Casa de Juan"}],
+"editingEntry":null}

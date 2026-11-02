@@ -38,12 +38,28 @@ Netlify y Cloudflare son direcciones distintas. El navegador **no** comparte los
 
 ## Subir una versión nueva
 
-Cambia las tres cosas a la vez:
-- `VER` en `index.html`, con el formato `AAAA-MM-DD-N`.
-- La misma cadena en `version.txt`.
-- `V` en `sw.js` (`rz-v2`, `rz-v3`…).
+1. Cambia el código en `tools/src/` (nunca `site/index.html` a mano) y ejecuta `sh tools/build.sh`, que une los trozos en `site/index.html` y escribe `site/version.txt`.
+2. Sube `VER` en `tools/src/app1.js` (formato `AAAA-MM-DD-N`) y añade su entrada arriba de `NEWS` en `app4.js`, con la misma versión. Si cambian archivos que guarda el service worker, sube también `V` en `site/sw.js`.
+3. Prueba en local: `node tests/suite.cjs` (con Playwright instalado; si usas tu Chrome, `PW_CHROME=/ruta/a/chrome`). `VERBOSE=1` muestra cada comprobación y `node tests/suite.cjs tiempos` lanza solo las que contienen esa palabra.
+4. Haz push a `main`. GitHub Actions pasa las pruebas; si alguna falla, no publica. Si pasan, publica en Cloudflare y comprueba que `version.txt` sirve la versión nueva; si no, publica otra vez.
 
-Después vuelve a subir la carpeta en Cloudflare › el proyecto › Create deployment.
+### Qué comprueban las pruebas (`tests/suite.cjs`)
+
+Abren la app en Chromium con los servicios externos simulados (OSRM, Nominatim, teselas), así que no dependen de internet.
+
+| Prueba | Comprueba |
+|---|---|
+| humo | Primer uso en móvil y PC: PIN nuevo, inicio y dos paradas dan 30,0 km |
+| tiempos | 30 min × 1,15 + 3 × 2 = 41 min; tramo de 14 min; guardar con tiempo real; calibrar ×1,44 → 1,45; Excel e informe |
+| destinos y ordenar | Crear destinos por búsqueda y en el mapa, planificar 4, Ordenar acorta la ruta, la visita cuenta |
+| paradas repetidas en el mapa | Pin «1 · 3» al volver a una parada y aviso «Vuelves a la parada 1» |
+| ver jornada en el mapa | Vista de solo lectura en móvil y PC, sin tocar la ruta en curso; Atrás vuelve al historial |
+| actualización | Aviso en la pantalla del PIN, no pide el PIN dos veces, la siguiente apertura sí |
+| copias y novedades | Enviar .txt, descargar .json, restaurar .txt, importar copia de la versión 1, novedades una sola vez |
+| visitas pulsables | Desde Destinos y Resumen una visita abre su jornada |
+| móvil táctil | iPhone SE y Pixel 7: ningún campo con letra < 16 px (zoom en iPhone) ni botón < 40 px |
+
+Cualquier error de JavaScript en la página también hace fallar la prueba.
 
 ## Coste y límites
 

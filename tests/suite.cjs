@@ -1,0 +1,234 @@
+// Pruebas de Rutahz. Se ejecutan antes de cada publicación (deploy.yml); si una falla, no se publica.
+//   node tests/suite.cjs            → todas
+//   node tests/suite.cjs tiempos    → solo las que contienen «tiempos» en el nombre
+// En local: PW_CHROME=/ruta/a/chrome node tests/suite.cjs
+const fs = require('fs'), path = require('path');
+const L = require('./lib.cjs');
+const { devices, data, meta, day, P, OFFICE, VER } = L;
+
+const results = [];
+let cur = null;
+const ok = (c, msg) => { cur.checks.push([!!c, msg]); if (!c) cur.fail = true; };
+const T = [];
+const test = (name, fn) => T.push([name, fn]);
+const marks = p => p.$$eval('.leaflet-marker-icon .pin', e => e.map(x => x.textContent.trim() || 'inicio'));
+
+/* 1 · Prueba de humo: primer uso en móvil y PC, PIN nuevo, inicio y dos paradas */
+test('humo', async ({ browser, base }) => {
+  for (const [nm, dev] of [['móvil', devices['iPhone 13']], ['PC', { viewport: { width: 1366, height: 860 } }]]) {
+    const ctx = await L.context(browser, base, { device: dev }), p = await L.page(ctx);
+    await p.goto(base); await L.unlock(p, { create: true, dismiss: false });
+    await p.click('.dlg .acts button:has-text("Empezar de cero")'); await p.click('.dlg .acts button:has-text("Entendido")');
+    await p.fill('#startQ', 'Palma'); await p.click('#startSug button:has-text("Palma")');
+    for (const t of ['Inca', 'Manacor']) { await p.fill('#stopQ', t); await p.click(`#stopSug button:has-text("${t}")`); }
+    const km = await p.waitForFunction(() => document.querySelector('#kmV').textContent === '30,0', null, { timeout: 8000 }).then(() => '30,0').catch(() => p.textContent('#kmV'));
+    ok(km === '30,0', `${nm}: 2 paradas + vuelta = 30,0 km → ${km}`);
+    ok(!p.errors.length, `${nm}: sin errores de JavaScript ${p.errors.join(' | ')}`);
+    await ctx.close();
+  }
+});
+
+/* 2 · Tiempo al volante: fórmula, tiempo real, calibración, Excel */
+test('tiempos', async ({ browser, base }) => {
+  const ctx = await L.context(browser, base, { seed: { rz_meta: { iz: Date.now() + 9e9, bz: Date.now() + 9e9 } } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true, dismiss: false });
+  await p.click('.dlg .acts button:has-text("Empezar de cero")'); await p.click('.dlg .acts button:has-text("Entendido")');
+  await p.fill('#startQ', 'Palma'); await p.click('#startSug button:has-text("Palma")'); await p.click('#startFav');
+  for (const t of ['Inca', 'Manacor']) { await p.fill('#stopQ', t); await p.click(`#stopSug button:has-text("${t}")`); }
+  await p.waitForTimeout(500);
+  // 3 tramos de 10 min: 30 × 1,15 + 3 llegadas × 2 = 40,5 → 41 min
+  ok(await p.textContent('#durV') === '41 min', 'resumen 41 min → ' + await p.textContent('#durV'));
+  ok((await p.textContent('#stopsList [data-seg="0"]')).includes('14 min'), 'tramo 10 × 1,15 + 2 = 14 min');
+  await p.click('#bSave'); await p.waitForSelector('#jth'); await p.fill('#jtm', '52'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  const j0 = await p.evaluate(() => __rz.D.hist[0].tot);
+  ok(j0.durM === 52 && Math.round(j0.dur) === 41 && j0.durRaw === 30 && j0.tf === 1.15 && j0.pm === 2, `jornada guardada con real 52 y estimado 41 → ${JSON.stringify(j0)}`);
+  await p.fill('#stopQ', 'Inca'); await p.click('#stopSug button:has-text("Inca")'); await p.waitForTimeout(400);
+  await p.click('#bSave'); await p.waitForSelector('#jth'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  await p.click('.bb button[data-v="hist"]'); await p.click('.hi >> nth=0'); await p.waitForSelector('.am');
+  await p.click('.amb:has-text("Anotar el tiempo real")'); await p.waitForSelector('#rth'); await p.fill('#rtm', '30'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  // (52 − 3×2) + (30 − 2×2) = 72 / (30 + 20) = 1,44
+  await p.click('.bb button[data-v="ajustes"]'); await p.click('#bCal'); await p.waitForSelector('.dlg');
+  const cal = await p.textContent('.dlg p'); ok(cal.includes('×1,44'), 'calibración ×1,44 → ' + cal.replace(/\s+/g, ' ').slice(0, 120));
+  await p.click('.dlg .acts button:has-text("Usar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.set.tf) === 1.45, 'factor redondeado a ×1,45');
+  await p.click('.bb button[data-v="hist"]'); await p.click('#bExport'); await p.waitForSelector('#exP');
+  await p.click('[data-c="salida"]'); await p.click('[data-c="det"]');
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 5000 }).catch(() => null), p.click('.dlg .acts button:has-text("Excel")')]);
+  const csv = dl ? fs.readFileSync(await dl.path(), 'utf8') : '';
+  ok(csv.includes(';0:52;52;Real;41;') && csv.includes('TOTAL'), 'Excel con tiempo real, estimado y total');
+  await p.click('#bExport'); await p.waitForSelector('#exP'); await p.evaluate(() => { window.print = () => {}; });
+  await p.click('.dlg .acts button:has-text("Informe")'); await p.waitForTimeout(300);
+  ok((await p.textContent('#print')).includes('TOTAL') || (await p.textContent('#print')).length > 200, 'informe imprimible generado');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 3 · Destinos: crear por búsqueda y mapa, planificar, ordenar, contar visitas */
+test('destinos y ordenar', async ({ browser, base }) => {
+  const ctx = await L.context(browser, base, {
+    device: devices['Pixel 7'], seed: { rz_meta: meta(VER) }, leg: (a, b) => { const d = L.hav(a, b) * 1300; return { distance: d, duration: d / 12 }; },
+    geo: [{ lat: '39.4897', lon: '2.8917', name: '', display_name: 'Carrer de Sant Bartomeu, 5, Llucmajor', address: { road: 'Carrer de Sant Bartomeu', house_number: '5', town: 'Llucmajor' } }] }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true, dismiss: false });
+  if (await p.isVisible('.dlg')) await p.click('.dlg .acts button:has-text("Empezar de cero")');
+  if (await p.isVisible('.dlg')) await p.click('.dlg .acts button >> nth=-1');
+  await p.fill('#startQ', 'Palma'); await p.click('#startSug button:has-text("Palma")');
+  await p.click('.bb button[data-v="dest"]');
+  const add = async (q, name) => { await p.click('#bDestNew'); await p.fill('#ndQ', q); await p.waitForTimeout(800); await p.click(`#ndS button:has-text("${q}") >> nth=0`); await p.waitForSelector('#pv'); await p.fill('#pv', name); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(250); };
+  await add('Sant Bartomeu', 'Casa de M.'); await add('Inca', 'Casa de J.'); await add('Manacor', 'Centro de día'); await add('Sóller', 'Casa de P.');
+  await p.click('#bDestNew'); await p.click('#ndMap'); await p.waitForTimeout(700); await p.click('#pickOk'); await p.waitForSelector('#pv'); await p.fill('#pv', 'Residencia'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  ok(await p.locator('.dr').count() === 5, '5 destinos creados (4 por búsqueda y 1 en el mapa) → ' + await p.locator('.dr').count());
+  await p.click('#dsGo');
+  for (const n of ['Centro de día', 'Casa de P.', 'Casa de M.', 'Casa de J.']) await p.click(`.dr:has-text("${n}") .ck`);
+  await p.click('#dsOk'); await p.waitForTimeout(700);
+  const kmB = parseFloat((await p.textContent('#kmV')).replace(',', '.')), ordB = await p.$$eval('#stopsList .pt[data-id] .nm', e => e.map(x => x.value));
+  ok(ordB.length === 4, '4 paradas planificadas desde Destinos');
+  await p.click('#bOpt'); await p.click('.dlg .acts button:has-text("Ordenar")'); await p.waitForTimeout(1200);
+  const kmA = parseFloat((await p.textContent('#kmV')).replace(',', '.')), ordA = await p.$$eval('#stopsList .pt[data-id] .nm', e => e.map(x => x.value));
+  ok(ctx.calls.t >= 1 && ordA.join() !== ordB.join() && kmA < kmB, `Ordenar acorta la ruta: ${kmB} → ${kmA} km`);
+  await p.click('#bSave'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(400);
+  await p.click('.bb button[data-v="dest"]'); await p.click('.dr:has-text("Casa de J.") .bd'); await p.waitForSelector('.am');
+  await p.click('.amb:has-text("Ver sus visitas")'); await p.waitForSelector('.vit');
+  ok(await p.locator('.vit').count() === 1, 'la jornada guardada cuenta como 1 visita');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 4 · Mapa: una parada repetida no se esconde bajo otra */
+test('paradas repetidas en el mapa', async ({ browser, base }) => {
+  const H = P(39.5813, 2.6779, 'Carrer de Hiroshima, 50, Palma');
+  const d = data({ cur: { start: { ...P(39.4897, 2.8917, "Carrer d'Es Marroig, Llucmajor"), time: '' }, stops: [{ id: 'a', ...H }, { id: 'b', ...P(39.5745, 2.6588, 'Carrer de las Navas de Tolosa, Palma') }, { id: 'c', ...H, lat: 39.58131, lon: 2.67791 }], notes: '', ret: true }, fav: null });
+  const ctx = await L.context(browser, base, { device: devices['Galaxy S9+'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(900);
+  const m0 = await marks(p);
+  ok(m0.some(t => /1 · (2 · )?3/.test(t)), 'parada 1 y 3 juntas en un mismo pin → ' + m0.join(' | '));
+  await p.click('.leaflet-marker-icon .pin.m'); await p.waitForTimeout(900);
+  const m1 = await marks(p);
+  ok(m1.includes('1 · 3') && m1.includes('2'), 'al tocar el grupo se separa en «1 · 3» y «2» → ' + m1.join(' | '));
+  ok((await p.textContent('#stopsList')).includes('Vuelves a la parada 1'), 'la lista avisa «Vuelves a la parada 1»');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 5 · Ver una jornada del historial en el mapa y volver con Atrás */
+test('ver jornada en el mapa', async ({ browser, base }) => {
+  const H = P(39.5813, 2.6779, 'Casa de M.'), j = day('h1', '2026-11-02', [{ ...H }, P(39.5745, 2.6588, 'Casa de J.'), { ...H }]);
+  for (const [nm, dev, nav] of [['móvil', devices['Galaxy S9+'], '.bb'], ['PC', { viewport: { width: 1280, height: 800 } }, '.tabs']]) {
+    const ctx = await L.context(browser, base, { device: dev, seed: { rz_data: data({ hist: [j] }), rz_meta: meta(VER) } }), p = await L.page(ctx);
+    await p.goto(base); await L.unlock(p, { create: true });
+    await p.click(nav + ' button[data-v="hist"]'); await p.click('.hi'); await p.click('.amb:has-text("Ver en el mapa")'); await p.waitForTimeout(900);
+    ok(await p.isVisible('#v-ver') && await p.locator('#verBox .pt.vr').count() >= 4, `${nm}: abre la vista de la jornada con su recorrido`);
+    ok((await marks(p)).some(t => t.includes('1 · 3')), `${nm}: el mapa muestra la parada repetida`);
+    ok(await p.locator('#stopsList .pt[data-id]').count() === 0, `${nm}: no toca la ruta en curso`);
+    await p.click('#verBox .pt.vr[data-i="1"]'); await p.waitForTimeout(400);
+    await p.goBack(); await p.waitForTimeout(400);
+    ok(await p.isVisible('#v-hist'), `${nm}: Atrás vuelve al historial`);
+    ok(!p.errors.length, `${nm}: sin errores de JavaScript ${p.errors.join(' | ')}`);
+    await ctx.close();
+  }
+});
+
+/* 6 · Actualización: aviso antes del PIN y sin pedirlo dos veces */
+test('actualización', async ({ browser, base, st }) => {
+  st.version = '2099-01-01-0';
+  try {
+    const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_meta: meta(VER) } }), p = await L.page(ctx);
+    await p.goto(base); await L.unlock(p, { create: true, dismiss: false }); await p.waitForTimeout(300);
+    while (await p.isVisible('.dlg')) { await p.click('.dlg .acts button >> nth=-1'); await p.waitForTimeout(200); }
+    await p.reload(); await p.waitForSelector('#lock:not([hidden])'); await p.waitForSelector('#lockUpd:not([hidden])', { timeout: 5000 }).catch(() => {});
+    ok(await p.isVisible('#lockUpd'), 'la pantalla del PIN avisa de la versión nueva');
+    await Promise.all([p.waitForNavigation(), p.click('#lockUpd')]); await p.waitForTimeout(400);
+    ok(await p.isVisible('#lock'), 'actualizar desde el PIN pide el PIN una sola vez');
+    await L.unlock(p, { dismiss: false }); await p.waitForTimeout(400);
+    ok(await p.isVisible('#banner'), 'dentro de la app sale el aviso de versión nueva');
+    await Promise.all([p.waitForNavigation(), p.click('#banner .acts button:has-text("Actualizar")')]); await p.waitForTimeout(600);
+    ok(!(await p.isVisible('#lock')), 'actualizar estando dentro no vuelve a pedir el PIN');
+    await p.evaluate(() => sessionStorage.removeItem('rz_ul')); await p.reload(); await p.waitForTimeout(400);
+    ok(await p.isVisible('#lock'), 'la siguiente apertura normal sí pide el PIN');
+    ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+    await ctx.close();
+  } finally { st.version = null; }
+});
+
+/* 7 · Copias de seguridad y novedades */
+test('copias y novedades', async ({ browser, base }) => {
+  const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], share: true, seed: { rz_data: d, rz_meta: meta(null) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true, dismiss: false });
+  await p.waitForSelector('.chgl', { timeout: 4000 }).catch(() => {});
+  ok(await p.isVisible('.chgl'), 'un usuario que actualiza ve las novedades');
+  if (await p.isVisible('.dlg')) await p.click('.dlg .acts button:has-text("Cerrar")');
+  await p.click('.bb button[data-v="ajustes"]'); await p.click('#sTabs button[data-s="dat"]');
+  await p.click('#bBkShare'); await p.waitForTimeout(300);
+  const sh = await p.evaluate(() => window.__shared);
+  ok(sh && /\.txt text\/plain/.test(sh[0]), 'Enviar copia comparte un .txt → ' + sh);
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 4000 }).catch(() => null), p.click('#bBkDl')]);
+  ok(dl && /\.json$/.test(dl.suggestedFilename()), 'Descargar copia guarda un .json → ' + (dl && dl.suggestedFilename()));
+  const txt = JSON.stringify({ app: 'rutahz', v: 2, data: { hist: [{ id: 'z9', label: 'Importada', iso: '2026-10-20', start: { lat: 39.57, lon: 2.65, label: 'T' }, stops: [{ lat: 39.6, lon: 2.7, label: 'B' }], tot: { road: 9, src: 'road' } }], clients: [] } });
+  await p.setInputFiles('#bkIn', { name: 'rutahz-copia.txt', mimeType: 'text/plain', buffer: Buffer.from(txt) }); await p.waitForSelector('.dlg');
+  ok(/restaurad|añadid|import/i.test(await p.textContent('.dlg')), 'restaura una copia .txt');
+  await p.click('.dlg .acts button >> nth=-1'); await p.waitForTimeout(200);
+  const n1 = await p.evaluate(() => __rz.D.hist.length);
+  await p.setInputFiles('#bkIn', path.join(__dirname, 'fx', 'v1.json')); await p.waitForSelector('.dlg'); await p.click('.dlg .acts button >> nth=-1'); await p.waitForTimeout(300);
+  const n2 = await p.evaluate(() => __rz.D.hist.length), imp = await p.evaluate(() => __rz.D.hist.find(j => /1729000000001$/.test(j.id)));
+  ok(n2 === n1 + 3 && imp && imp.tot.road === 63.5, `importa la copia de la versión 1 (Netlify): ${n1} → ${n2} jornadas`);
+  await p.click('#sTabs button[data-s="app"]'); await p.click('#bNews'); await p.waitForSelector('.chgl');
+  ok(await p.locator('.chgl section').count() >= 3, 'Ajustes › App › Novedades lista las versiones');
+  await p.click('.dlg .acts button >> nth=-1');
+  await p.reload(); await L.unlock(p, { dismiss: false }); await p.waitForTimeout(800);
+  ok(!(await p.isVisible('.chgl')), 'al reabrir ya no salen las novedades');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 8 · Desde Destinos y Resumen, una visita abre su jornada */
+test('visitas pulsables', async ({ browser, base }) => {
+  const A = P(39.7217, 2.9106, 'Casa de M.', 'c1'), B = P(39.6875, 2.8492, 'Casa de J.', 'c2');
+  const d = data({ hist: [day('h1', '2026-10-28', [{ ...B }, { ...A }]), day('h2', '2026-10-29', [{ ...A }]), day('h3', '2026-10-30', [{ ...B }])], clients: [{ id: 'c1', ...A }, { id: 'c2', ...B }] });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true });
+  await p.click('.bb button[data-v="dest"]'); await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Ver sus visitas")'); await p.waitForSelector('.vit');
+  ok(await p.locator('.vit').count() === 2, 'Casa de M. tiene 2 visitas');
+  await p.click('.vit >> nth=1'); await p.waitForTimeout(800);
+  ok(await p.isVisible('#v-ver') && await p.locator('#verBox .pt.vr.on').count() === 1, 'la visita abre su jornada con la parada resaltada');
+  await p.goBack(); await p.waitForTimeout(300);
+  await p.click('.bb button[data-v="stats"]'); await p.click('.rk button[data-i="0"]'); await p.click('.rk .dt:not([hidden]) button >> nth=0'); await p.waitForTimeout(800);
+  ok(await p.isVisible('#v-ver'), 'una fecha del Resumen abre su jornada');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 9 · Uso en móvil: sin zoom en los campos (letra ≥ 16 px) y botones fáciles de tocar (≥ 40 px) */
+test('móvil táctil', async ({ browser, base }) => {
+  const stops = [P(39.7217, 2.9106, 'Casa de M. (Inca)', 'c1'), P(39.6875, 2.8492, 'Casa de J. Binissalem', 'c2'), P(39.5694, 3.2085, 'Centro de día Manacor', 'c3'), P(39.4897, 2.8917, 'Casa de P. Llucmajor', 'c4')];
+  const d = data({ cur: { start: { ...OFFICE, time: '08:05' }, stops: stops.map((s, i) => ({ ...s, id: 's' + i })), notes: '', ret: true }, hist: [day('h1', '2026-10-30', stops.slice(0, 2))], clients: stops.map(s => ({ id: s.cid, ...s, addr: s.label })) });
+  for (const [nm, dev] of [['iPhone SE', devices['iPhone SE']], ['Pixel 7', devices['Pixel 7']]]) {
+    const ctx = await L.context(browser, base, { device: dev, seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+    await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(600);
+    for (const v of ['ruta', 'dest', 'hist', 'stats', 'ajustes']) {
+      await p.click(`.bb button[data-v="${v}"]`); await p.waitForTimeout(250);
+      const small = await p.evaluate(() => [...document.querySelectorAll('input:not([type=checkbox]):not([type=file]):not([type=color]),textarea,select')].filter(e => e.offsetParent && parseFloat(getComputedStyle(e).fontSize) < 16).map(e => e.id || e.className));
+      const tiny = await p.evaluate(() => [...document.querySelectorAll('button, a, label.sw')].filter(e => e.offsetParent && !e.closest('.leaflet-control-attribution')).map(e => { const r = e.getBoundingClientRect(); return [e.id || e.className || e.textContent.trim().slice(0, 14), Math.round(r.width), Math.round(r.height)]; }).filter(([, w, h]) => w && h && (w < 40 || h < 40)));
+      ok(!small.length, `${nm} · ${v}: campos con letra < 16 px ${small.join(', ')}`);
+      ok(!tiny.length, `${nm} · ${v}: botones < 40 px ${JSON.stringify(tiny.slice(0, 6))}`);
+    }
+    ok(!p.errors.length, `${nm}: sin errores de JavaScript ${p.errors.join(' | ')}`);
+    await ctx.close();
+  }
+});
+
+(async () => {
+  const only = process.argv[2], srv = await L.serve(), browser = await L.launch();
+  for (const [name, fn] of T) {
+    if (only && !name.includes(only)) continue;
+    cur = { name, checks: [], fail: false }; results.push(cur);
+    const t0 = Date.now();
+    try { await Promise.race([fn({ browser, base: srv.base, st: srv.st }), new Promise((_, r) => setTimeout(() => r(new Error('tiempo agotado (90 s)')), 90000))]); }
+    catch (e) { cur.fail = true; cur.checks.push([false, 'error: ' + (e.message || e).split('\n')[0]]); }
+    console.log(`${cur.fail ? '✗' : '✓'} ${name} (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+    for (const [c, m] of cur.checks) if (!c || process.env.VERBOSE) console.log(`    ${c ? 'ok' : 'FALLO'} · ${m}`);
+  }
+  await browser.close(); srv.close();
+  const bad = results.filter(r => r.fail);
+  console.log(`\n${results.length - bad.length}/${results.length} pruebas superadas (versión ${VER})`);
+  process.exit(bad.length ? 1 : 0);
+})();
