@@ -584,7 +584,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 
     <!-- ===== ESTADÍSTICAS ===== -->
     <section class="view" id="v-stats" hidden>
-      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div></div>
+      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div><button class="btn o sm" id="bExport2"><svg class="i"><use href="#i-file"/></svg>Informe</button></div>
       <div id="statsBox" style="display:flex;flex-direction:column;gap:14px"></div>
     </section>
 
@@ -643,9 +643,6 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           <p class="hint" style="margin-top:10px">Restaurar <b>combina</b> la copia con lo que ya tienes: no borra nada. Acepta también las copias de la versión anterior de Rutahz.</p>
           <p class="hint" id="persistNote" style="margin-top:6px"></p>
         </section>
-        <section class="card set"><h2>Exportar</h2><p>Informe imprimible o PDF y hoja de cálculo, por periodo.</p>
-          <button class="btn g w" id="bExport2"><svg class="i"><use href="#i-file"/></svg>Informe y Excel…</button>
-        </section>
         <section class="card set" style="border-color:color-mix(in srgb,var(--dg) 40%,var(--bd))"><h2>Borrar todo</h2><p>Ruta actual, historial, clientes, favorito, ajustes y PIN de este dispositivo. Haz antes una copia.</p>
           <button class="btn od w" id="bWipe"><svg class="i"><use href="#i-trash"/></svg>Borrar todos los datos</button>
         </section>
@@ -689,7 +686,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-4';
+const VER = '2026-11-02-5';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -2020,6 +2017,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-5', d: '2026-11-02', t: 'Informe donde toca', i: [
+    'El <b>informe</b> (PDF y Excel) se saca desde <b>Historial</b> o <b>Resumen</b>, con el botón «Informe». Ya no está en Ajustes.'] },
   { v: '2026-11-02-4', d: '2026-11-02', t: 'Novedades en su sitio', i: [
     'Las <b>Novedades</b> están ahora al final de Ajustes › App, junto a la versión, como en las demás apps hz.'] },
   { v: '2026-11-02-3', d: '2026-11-02', t: 'Copias y novedades', i: [
@@ -2078,7 +2077,7 @@ function showHelp() {
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
       <li><b>Tiempo.</b> El tiempo al volante es una estimación. Si anotas el real al guardar, es el que sale en los informes; con unos cuantos, Ajustes › Tiempo al volante › Calibrar ajusta la estimación a tu forma de conducir.</li>
-      <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
+      <li><b>Informe.</b> Con el botón «Informe» de Historial o Resumen sacas el PDF o el Excel del mes.</li>
       <li><b>Copia.</b> Los datos solo están en este móvil: haz copia en Ajustes › Datos.</li></ol>` });
 }
 $('#bHelp').onclick = showHelp;

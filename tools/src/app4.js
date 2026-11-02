@@ -258,6 +258,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-5', d: '2026-11-02', t: 'Informe donde toca', i: [
+    'El <b>informe</b> (PDF y Excel) se saca desde <b>Historial</b> o <b>Resumen</b>, con el botón «Informe». Ya no está en Ajustes.'] },
   { v: '2026-11-02-4', d: '2026-11-02', t: 'Novedades en su sitio', i: [
     'Las <b>Novedades</b> están ahora al final de Ajustes › App, junto a la versión, como en las demás apps hz.'] },
   { v: '2026-11-02-3', d: '2026-11-02', t: 'Copias y novedades', i: [
@@ -316,7 +318,7 @@ function showHelp() {
       <li><b>Vuelta.</b> El interruptor «Volver a…» suma el regreso al punto de partida.</li>
       <li><b>Guardar jornada.</b> Ponle fecha (también días pasados) y queda en el Historial.</li>
       <li><b>Tiempo.</b> El tiempo al volante es una estimación. Si anotas el real al guardar, es el que sale en los informes; con unos cuantos, Ajustes › Tiempo al volante › Calibrar ajusta la estimación a tu forma de conducir.</li>
-      <li><b>Informe.</b> En Historial › Informe sacas el PDF o el Excel del mes.</li>
+      <li><b>Informe.</b> Con el botón «Informe» de Historial o Resumen sacas el PDF o el Excel del mes.</li>
       <li><b>Copia.</b> Los datos solo están en este móvil: haz copia en Ajustes › Datos.</li></ol>` });
 }
 $('#bHelp').onclick = showHelp;

@@ -170,7 +170,7 @@
 
     <!-- ===== ESTADÍSTICAS ===== -->
     <section class="view" id="v-stats" hidden>
-      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div></div>
+      <div class="vh"><div><h1>Resumen</h1><p>Solo jornadas guardadas</p></div><button class="btn o sm" id="bExport2"><svg class="i"><use href="#i-file"/></svg>Informe</button></div>
       <div id="statsBox" style="display:flex;flex-direction:column;gap:14px"></div>
     </section>
 
@@ -228,9 +228,6 @@
           </div>
           <p class="hint" style="margin-top:10px">Restaurar <b>combina</b> la copia con lo que ya tienes: no borra nada. Acepta también las copias de la versión anterior de Rutahz.</p>
           <p class="hint" id="persistNote" style="margin-top:6px"></p>
-        </section>
-        <section class="card set"><h2>Exportar</h2><p>Informe imprimible o PDF y hoja de cálculo, por periodo.</p>
-          <button class="btn g w" id="bExport2"><svg class="i"><use href="#i-file"/></svg>Informe y Excel…</button>
         </section>
         <section class="card set" style="border-color:color-mix(in srgb,var(--dg) 40%,var(--bd))"><h2>Borrar todo</h2><p>Ruta actual, historial, clientes, favorito, ajustes y PIN de este dispositivo. Haz antes una copia.</p>
           <button class="btn od w" id="bWipe"><svg class="i"><use href="#i-trash"/></svg>Borrar todos los datos</button>
