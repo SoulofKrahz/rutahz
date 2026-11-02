@@ -1,0 +1,20 @@
+# Diagnóstico manual: tiempos y distancias que da OSRM en trayectos de prueba por Mallorca.
+name: Medir OSRM
+on: workflow_dispatch
+jobs:
+  medir:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Medir
+        run: |
+          medir() { r=$(curl -sS -m 20 "https://router.project-osrm.org/route/v1/driving/$2?overview=false&annotations=false"); echo "$1 :: $(echo "$r" | python3 -c 'import sys,json; d=json.load(sys.stdin); r=d["routes"][0]; print("%.1f km · %.1f min · %.0f km/h" % (r["distance"]/1000, r["duration"]/60, r["distance"]/r["duration"]*3.6))')"; sleep 1.2; }
+          medir "Son Dureta → Plaça d'Espanya (Palma)" "2.6249,39.5788;2.6544,39.5762"
+          medir "Plaça d'Espanya → Son Gotleu" "2.6544,39.5762;2.6696,39.5826"
+          medir "Son Espases → Pere Garau" "2.6403,39.6058;2.6658,39.5745"
+          medir "Palma centro → Coll d'en Rabassa" "2.6502,39.5696;2.6930,39.5480"
+          medir "Palma → Marratxí (Pòrtol)" "2.6502,39.5696;2.7000,39.6260"
+          medir "Palma → Inca (autopista)" "2.6502,39.5696;2.9106,39.7217"
+          medir "Inca → Binissalem" "2.9106,39.7217;2.8492,39.6875"
+          medir "Palma → Llucmajor" "2.6502,39.5696;2.8917,39.4897"
+          medir "Manacor centro → Porto Cristo" "3.2085,39.5694;3.3211,39.5406"
