@@ -103,14 +103,19 @@ $('#setMc').onchange = e => { P.mc = e.target.checked; saveP(); document.documen
 /* =================== Copia de seguridad =================== */
 function backupJSON() { return JSON.stringify({ app: 'rutahz', v: 2, ver: VER, exported: new Date().toISOString(), data: D, prefs: P }, null, 1); }
 function markBackup() { M.lb = today(); saveM(); renderBackupNote(); hideBanner('bk'); }
+// Chrome en Android no deja compartir archivos .json (no están en su lista de tipos permitidos): para enviar, la copia
+// viaja como .txt con el mismo contenido. Guardar en el dispositivo sigue usando .json. Restaurar acepta los dos.
+const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'p.txt', { type: 'text/plain' })] })); } catch (e) { return false; } })();
 async function doBackup(share) {
   flush();
-  const r = await giveFile(`rutahz-copia-${today()}.json`, backupJSON(), 'application/json', 'Copia de Rutahz', share ? 'share' : 'download');
-  if (r === 'shared' || r === 'downloaded') { markBackup(); toast(r === 'shared' ? 'Copia enviada. Guárdala fuera del móvil.' : 'Copia descargada.'); }
+  const r = share
+    ? await giveFile(`rutahz-copia-${today()}.txt`, backupJSON(), 'text/plain', 'Copia de Rutahz', 'share')
+    : await giveFile(`rutahz-copia-${today()}.json`, backupJSON(), 'application/json', 'Copia de Rutahz', 'download');
+  if (r === 'shared' || r === 'downloaded') { markBackup(); toast(r === 'shared' ? 'Copia enviada. Guárdala fuera del móvil.' : 'Copia guardada en Descargas.'); }
 }
 $('#bBkShare').onclick = () => doBackup(true);
 $('#bBkDl').onclick = () => doBackup(false);
-$('#bBkShare').hidden = !navigator.canShare;
+$('#bBkShare').hidden = !canShareFiles;
 function renderBackupNote() {
   const el = $('#bkNote');
   if (!M.lb) { el.className = 'fm w'; el.innerHTML = `<b>Todavía no has hecho ninguna copia.</b> Si el navegador borra sus datos o cambias de móvil, sin copia se pierde todo.`; return; }
@@ -180,6 +185,7 @@ function importBackup(obj) {
 $('#bkIn').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   if (f.size > 20e6) return toast('El archivo es demasiado grande para ser una copia de Rutahz.');
+  if (!/\.(json|txt)$/i.test(f.name) && f.type && !/json|text/.test(f.type)) return toast('Elige el archivo de la copia (.json o .txt).');
   const rd = new FileReader();
   rd.onload = async () => {
     let obj; try { obj = JSON.parse(rd.result); } catch (err) { return dlg({ title: 'No es una copia válida', text: 'El archivo no se puede leer. Elige el .json que guardaste con «Guardar copia».', acts: [{ t: 'Entendido', v: null }] }); }
@@ -233,7 +239,7 @@ async function lockDone(v) {
   }
 }
 function showLock(step, purpose) { Object.assign(Lk, { step, purpose, buf: '', first: null }); locked = true; $('#lock').hidden = false; lockPaint(); if (layerOpen) closeLayer(null); }
-function unlock() { locked = false; $('#lock').hidden = true; Lk.buf = ''; setTimeout(() => { map.invalidateSize(); runUrlAction(); maybeBanner(); }, 60); }
+function unlock() { locked = false; $('#lock').hidden = true; Lk.buf = ''; setTimeout(() => { map.invalidateSize(); runUrlAction(); if (!maybeNews()) maybeBanner(); }, 60); }
 $('#lockKp').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map(k => k === '' ? '<span></span>' : k === 'del' ? `<button class="x" data-k="del" aria-label="Borrar">${ic('undo')}</button>` : `<button data-k="${k}">${k}</button>`).join('');
 $('#lockKp').onclick = e => { const b = e.target.closest('button'); if (b) lockKey(b.dataset.k); };
 document.addEventListener('keydown', e => { if (!locked) return; if (/^\d$/.test(e.key)) lockKey(e.key); else if (e.key === 'Backspace') lockKey('del'); });
@@ -249,9 +255,53 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { renderChip(); renderStats(); }
 });
 
+/* =================== Novedades =================== */
+// La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
+const NEWS = [
+  { v: '2026-11-02-3', d: '2026-11-02', t: 'Copias y novedades', i: [
+    '<b>Enviar copia</b> ahora abre el menú para compartir (WhatsApp, correo, Drive) también en Android. Antes acababa descargando, igual que el otro botón.',
+    '<b>Guardar en este dispositivo</b> la deja en Descargas. Restaurar acepta los dos formatos.',
+    'Esta sección de <b>Novedades</b>: sale sola tras cada actualización y la tienes en Ajustes › App.'] },
+  { v: '2026-11-02-2', d: '2026-11-02', t: 'La vuelta, a la vista', i: [
+    'Debajo del total se ve cuánto suma <b>la vuelta</b> al punto de partida.',
+    'Toca <b>«Al volante»</b> para ver el tiempo de cada tramo.'] },
+  { v: '2026-11-02-1', d: '2026-11-02', t: 'Más cómoda en el móvil', i: [
+    '<b>Guardar jornada</b> ya no tapa las paradas: está en el resumen y al final de la página.',
+    'El iPhone ya no hace zoom al escribir y los botones son más fáciles de pulsar.'] },
+  { v: '2026-11-02-0', d: '2026-11-02', t: 'Tiempo al volante', i: [
+    'Tiempo más realista: suma un margen por <b>tráfico</b> y unos minutos para <b>aparcar</b> en cada llegada.',
+    'Puedes anotar el <b>tiempo real</b> al guardar una jornada; es el que cuenta en informes.',
+    '<b>Calibrar</b> ajusta la estimación a tu forma de conducir (Ajustes › General).',
+    'Informe y Excel con horas al volante, hora de salida y recorrido por tramos.'] },
+  { v: '2026-11-01-3', d: '2026-11-01', t: 'Destinos', i: [
+    'Nueva pestaña <b>Destinos</b>: tus sitios habituales con sus visitas, para añadirlos en un toque.',
+    '<b>Planificar</b>: elige varios destinos en orden y se añaden de golpe.',
+    '<b>Ordenar</b> paradas para hacer menos km.'] },
+  { v: '2026-11-01-2', d: '2026-11-01', t: 'Logo de Mallorca', i: ['Nuevo icono con la silueta de la isla, en el color que elijas.'] },
+  { v: '2026-11-01-0', d: '2026-11-01', t: 'Rutahz 2.0', i: [
+    'Diseño nuevo con <b>10 colores</b>, modo oscuro y ajustes de accesibilidad.',
+    '<b>Volver a la oficina</b> suma la vuelta a los km.',
+    '<b>Elegir en el mapa</b> con un punto fijo: se acabaron las paradas sin querer.',
+    'Informes en PDF y Excel por mes, año o fechas.',
+    'Copia de seguridad que se envía directamente y PIN más seguro.'] },
+];
+function showNews(since) {
+  const list = since ? NEWS.filter(n => n.v > since) : NEWS;
+  if (!list.length) return;
+  dlg({ title: since ? 'Novedades de Rutahz' : 'Novedades', acts: [{ t: 'Entendido', v: null }],
+    html: `<div class="chgl">${list.map((n, k) => `<section><h4><span>${esc(n.t)}${since && k === 0 ? '<span class="nw">Nuevo</span>' : ''}</span><small>${esc(fmtDate(n.d, { day: 'numeric', month: 'short' }))}</small></h4><ul>${n.i.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>` });
+}
+function maybeNews() {
+  const seen = M.sv || (M.fu ? '2026-11-02-2' : null); M.sv = VER; saveM(); // quien ya usaba la app antes de esta sección ve solo lo último
+  if (!seen || seen === VER || layerOpen) return false;
+  if (!NEWS.some(n => n.v > seen)) return false;
+  setTimeout(() => showNews(seen), 400); return true;
+}
+$('#bNews').onclick = () => showNews();
+
 /* =================== Primera vez y ayuda =================== */
 function onFirstRun() {
-  M.fu = M.fu || today(); saveM();
+  M.fu = M.fu || today(); M.sv = VER; saveM();
   dlg({ title: 'Bienvenido a Rutahz 2.0', text: '¿Usabas la versión anterior? Esta vive en otra dirección web, así que tus rutas no aparecen solas: restaura la copia que guardaste allí con «Guardar copia».', acts: [{ t: 'Empezar de cero', cls: 'g', v: 'new' }, { t: 'Restaurar copia', v: 'imp', icon: 'ul' }] })
     .then(v => { if (v === 'imp') $('#bkIn').click(); else showHelp(); });
 }

@@ -1,5 +1,5 @@
 // Rutahz — service worker. Si cambias iconos, manifest o index.html, sube el número de V.
-const V = 'rz-v7', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
+const V = 'rz-v8', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'icono.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 const KEEP = [V, FONTS, LIBS, TILES];
 

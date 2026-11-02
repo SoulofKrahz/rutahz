@@ -221,8 +221,11 @@
       <div id="s-dat" class="sp" hidden>
         <section class="card set"><h2>Copia de seguridad</h2><p>Tus datos viven solo en este navegador. Guarda la copia fuera del móvil (Drive, correo…).</p>
           <div id="bkNote" class="fm" style="margin-bottom:12px"></div>
-          <div class="brow"><button class="btn" id="bBkShare"><svg class="i"><use href="#i-share"/></svg>Enviar copia</button><button class="btn g" id="bBkDl"><svg class="i"><use href="#i-dl"/></svg>Descargar</button></div>
-          <label class="btn g w" style="margin-top:8px;cursor:pointer"><svg class="i"><use href="#i-ul"/></svg>Restaurar copia<input type="file" id="bkIn" accept="application/json,.json" hidden></label>
+          <div class="bkopts">
+            <button class="bko" id="bBkShare"><span class="bki"><svg class="i"><use href="#i-share"/></svg></span><span><b>Enviar copia</b><small>Por WhatsApp, correo o a Drive. Lo más seguro: queda fuera del móvil.</small></span></button>
+            <button class="bko" id="bBkDl"><span class="bki"><svg class="i"><use href="#i-dl"/></svg></span><span><b>Guardar en este dispositivo</b><small>En la carpeta Descargas (Archivos en iPhone).</small></span></button>
+            <label class="bko" style="cursor:pointer"><span class="bki"><svg class="i"><use href="#i-ul"/></svg></span><span><b>Restaurar copia</b><small>Elige el archivo de una copia (.json o .txt).</small></span><input type="file" id="bkIn" accept="application/json,.json,text/plain,.txt" hidden></label>
+          </div>
           <p class="hint" style="margin-top:10px">Restaurar <b>combina</b> la copia con lo que ya tienes: no borra nada. Acepta también las copias de la versión anterior de Rutahz.</p>
           <p class="hint" id="persistNote" style="margin-top:6px"></p>
         </section>
@@ -242,6 +245,9 @@
           <label class="lb">Volver a pedir el PIN tras estar en segundo plano</label>
           <div class="seg" id="sgAl"><button data-v="0">Solo al abrir</button><button data-v="1">1 min</button><button data-v="5">5 min</button><button data-v="15">15 min</button></div>
           <button class="btn g w" id="bPin" style="margin-top:12px"><svg class="i"><use href="#i-lock"/></svg>Cambiar PIN</button>
+        </section>
+        <section class="card set"><h2>Novedades</h2><p>Qué ha cambiado en cada versión.</p>
+          <button class="btn g w" id="bNews"><svg class="i"><use href="#i-star"/></svg>Ver novedades</button>
         </section>
         <section class="card set"><h2>Versión</h2>
           <div class="row"><div><b id="verT"></b><small id="verS">Se actualiza sola al abrir con conexión.</small></div><button class="btn g sm" id="bUpd"><svg class="i"><use href="#i-refresh"/></svg>Buscar</button></div>
