@@ -131,6 +131,7 @@ html:not(.mapc) .leaflet-tile-pane{filter:grayscale(1) contrast(1.06)}
 .mpill span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mpill b{font-weight:650}
 .pin{display:grid;place-items:center;border-radius:50%;font:700 12px/1 Inter,sans-serif;color:var(--onem);background:var(--em);border:2.5px solid var(--card);box-shadow:0 2px 6px #0006;width:28px;height:28px}
 .pin.s{background:var(--card);border:3px solid var(--em2);width:26px;height:26px}.pin.s::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--em2)}
+.pin.m{border-radius:99px;font-size:11.5px;letter-spacing:-.02em;padding:0 6px}
 .pin.h{background:var(--mu)}.pin.h.s{background:var(--card);border-color:var(--mu)}.pin.h.s::after{background:var(--mu)}
 .me{width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 6px #1a73e833,0 1px 4px #0006}
 /* Elegir en el mapa: punto fijo en el centro */
@@ -228,12 +229,13 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .clh h3{font:600 .6875rem Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mu)}
 .clh button{font-size:.75rem;font-weight:600;color:var(--em);padding:6px 4px}
 .selb{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--tint);font-size:.8125rem}
-.durb{text-align:left;padding:0;color:inherit}.durb span{display:inline-flex;align-items:center;gap:4px}.durb span svg{width:12px;height:12px;color:var(--em)}
+.durb{text-align:left;padding:0;color:inherit}.durb span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.durb span svg{width:12px;height:12px;color:var(--em)}
 .retn{margin-top:10px;font-size:.8125rem;color:var(--mu)}.retn b{color:var(--tx);font-weight:600}
 .legt{width:100%;border-collapse:collapse;font-size:.8125rem}.legt td{padding:7px 0;border-top:1px solid var(--bd);vertical-align:top}.legt tr:first-child td{border-top:0}.legt td.n{text-align:right;white-space:nowrap;padding-left:8px}.legt small{display:block;color:var(--mu);font-size:.6875rem}.legt tfoot td{font-weight:700;border-top:1.5px solid var(--tx)}
 .sumact{margin-top:14px}.sumact .btn{min-height:50px;font-size:.9375rem}
 .endsave .btn{min-height:52px;font-size:.9375rem}
 .rowsw{cursor:pointer}.rowsw:active{opacity:.85}
+.pt .tx small .same{display:flex;align-items:center;gap:4px;color:var(--em);font-weight:600;margin-top:1px}.pt .tx small .same svg{width:12px;height:12px}
 .pt .tx small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #stopsFoot{margin-top:8px;padding-top:4px;border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}
 .lks{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:.8125rem}.lks button{color:var(--mu);font-weight:600;padding:8px 4px;display:inline-flex;align-items:center;gap:6px}.lks button:hover{color:var(--em)}.lks button.dg:hover{color:var(--dg)}.lks svg{width:15px;height:15px}

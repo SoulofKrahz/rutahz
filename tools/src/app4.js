@@ -258,6 +258,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-6', d: '2026-11-02', t: 'Volver a un sitio', i: [
+    'Si vuelves a un sitio donde ya has estado, el mapa lo muestra en un solo marcador con los dos números (por ejemplo «1 · 3»). Antes, el último tapaba al primero y parecía que faltaba una parada.',
+    'Las paradas que quedan muy juntas al ver toda la isla se agrupan («1 · 2 · 3»): tócalo y el mapa se acerca para separarlas.',
+    'En la lista de paradas pone «Vuelves a la parada 1».'] },
   { v: '2026-11-02-5', d: '2026-11-02', t: 'Informe donde toca', i: [
     'El <b>informe</b> (PDF y Excel) se saca desde <b>Historial</b> o <b>Resumen</b>, con el botón «Informe». Ya no está en Ajustes.'] },
   { v: '2026-11-02-4', d: '2026-11-02', t: 'Novedades en su sitio', i: [

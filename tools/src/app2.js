@@ -12,7 +12,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_M
 }).on('tileerror', () => { if (navigator.onLine && Date.now() - tileErrAt > 60000) { tileErrAt = Date.now(); toast('Parte del mapa no ha cargado. Comprueba la conexión.'); } }).addTo(map);
 const lyRoute = L.layerGroup().addTo(map), lyMk = L.layerGroup().addTo(map), lyHist = L.layerGroup().addTo(map), lyMe = L.layerGroup().addTo(map);
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const pinIcon = (cls, txt) => L.divIcon({ className: '', html: `<div class="pin ${cls}">${txt || ''}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+const pinIcon = (cls, txt, n = 1) => { const w = n > 1 ? 18 + String(txt).length * 7 : 28; return L.divIcon({ className: '', html: `<div class="pin ${cls}" style="${n > 1 ? `width:${w}px` : ''}">${txt || ''}</div>`, iconSize: [w, 28], iconAnchor: [w / 2, 14] }); };
 function applyScope() {
   if (D.set.unl) { map.setMaxBounds(null); map.setMinZoom(3); }
   else {
@@ -32,12 +32,35 @@ function drawMarkers() {
     m.on('dragend', () => moved(c.start, m, 'Punto de partida movido'));
     m.addTo(lyMk);
   }
-  c.stops.forEach((s, i) => {
-    const m = L.marker([s.lat, s.lon], { icon: pinIcon('', i + 1), draggable: true, title: s.label || `Parada ${i + 1}`, keyboard: false, zIndexOffset: 1000 + i });
-    m.bindTooltip(esc(s.label || `Parada ${i + 1}`), { direction: 'top', offset: [0, -12] });
-    m.on('dragend', () => moved(s, m, `Parada ${i + 1} movida`));
+  // Paradas en el mismo sitio (volver a un paciente, p. ej.) van en un solo marcador «1 · 3»: si no, la última tapa a las demás
+  // Paradas que se pisan en pantalla van en un solo marcador «1 · 3». Si son el mismo sitio, se puede arrastrar;
+  // si solo están cerca, al tocarlo el mapa se acerca hasta separarlas.
+  stopGroups(c.stops).forEach(g => {
+    const nums = g.map(x => x.i + 1), lab = nums.join(' · '), same = g.every(x => near(x.s, g[0].s)), ll = groupCenter(g);
+    const m = L.marker(ll, { icon: pinIcon(g.length > 1 ? 'm' : '', lab, nums.length), draggable: same, title: g.length > 1 ? `Paradas ${lab}` : g[0].s.label, keyboard: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i });
+    m.bindTooltip(g.length > 1 ? `<b>Paradas ${lab}</b>${[...new Set(g.map(x => x.s.label))].map(l => '<br>' + esc(l)).join('')}` : esc(g[0].s.label || `Parada ${lab}`), { direction: 'top', offset: [0, -12] });
+    if (same) m.on('dragend', () => movedGroup(g.map(x => x.s), m, g.length > 1 ? `Paradas ${lab} movidas` : `Parada ${lab} movida`));
+    else m.on('click', e => { L.DomEvent.stop(e); map.fitBounds(L.latLngBounds(g.map(x => [x.s.lat, x.s.lon])), { padding: [70, 70], maxZoom: 17, animate: !RM }); });
     m.addTo(lyMk);
   });
+}
+const PIN_GAP = 30; // px: dos marcadores más cerca que esto se juntan
+function stopGroups(stops) {
+  const gs = [], pt = s => { try { return map.latLngToContainerPoint([s.lat, s.lon]); } catch (e) { return null; } };
+  stops.forEach((s, i) => {
+    const p = pt(s);
+    const g = gs.find(g => g.some(x => near(x.s, s) || (p && x.p && x.p.distanceTo(p) < PIN_GAP)));
+    if (g) g.push({ s, i, p }); else gs.push([{ s, i, p }]);
+  });
+  return gs;
+}
+function groupCenter(g) { const n = g.length; return [g.reduce((a, x) => a + x.s.lat, 0) / n, g.reduce((a, x) => a + x.s.lon, 0) / n]; }
+map.on('zoomend', () => { drawMarkers(); if (viewingHist) drawHistMarkers(viewingHist); });
+function movedGroup(list, m, msg) {
+  const old = list.map(s => ({ lat: s.lat, lon: s.lon })), p = m.getLatLng();
+  list.forEach(s => { s.lat = p.lat; s.lon = p.lng; });
+  save(); drawMarkers(); recalc();
+  toast(msg, { undo: () => { list.forEach((s, k) => { s.lat = old[k].lat; s.lon = old[k].lon; }); save(); drawMarkers(); recalc(); } });
 }
 function moved(pt, m, msg) {
   const old = { lat: pt.lat, lon: pt.lon }, p = m.getLatLng();
@@ -82,8 +105,7 @@ async function showHistOnMap(j, keep) {
   if (!j.start) return;
   setView('ruta');
   const pts = pointsOf(j);
-  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s h'), interactive: false }).addTo(lyHist);
-  j.stops.forEach((s, i) => L.marker([s.lat, s.lon], { icon: pinIcon('h', i + 1), interactive: false }).bindTooltip(esc(s.label || `Parada ${i + 1}`)).addTo(lyHist));
+  drawHistMarkers(j);
   $('#histPill').hidden = false; $('#histPillT').innerHTML = `<b>${esc(j.label)}</b> · ${esc(fmtDateS(j.iso))} · ${fmtKm(j.tot.road)}`;
   if (!keep) { if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }); setTimeout(() => { map.invalidateSize(); fitCur(50); }, 60); }
   const r = await computeRoute(pts);
@@ -93,7 +115,13 @@ async function showHistOnMap(j, keep) {
   L.polyline(line, { color: css('--card'), weight: 8, opacity: .85, interactive: false }).addTo(lyHist);
   L.polyline(line, { color: col, weight: 4.5, opacity: .9, interactive: false, dashArray: r.src === 'road' ? null : '2 9' }).addTo(lyHist);
 }
-function closeHistView() { viewingHist = null; lyHist.clearLayers(); $('#histPill').hidden = true; drawMarkers(); drawRoute(); }
+const lyHistMk = L.layerGroup().addTo(map);
+function drawHistMarkers(j) {
+  lyHistMk.clearLayers(); if (!j || !j.start) return;
+  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s h'), interactive: false }).addTo(lyHistMk);
+  stopGroups(j.stops).forEach(g => { const lab = g.map(x => x.i + 1).join(' · '); L.marker(groupCenter(g), { icon: pinIcon('h' + (g.length > 1 ? ' m' : ''), lab, g.length), interactive: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i }).addTo(lyHistMk); });
+}
+function closeHistView() { lyHistMk.clearLayers(); viewingHist = null; lyHist.clearLayers(); $('#histPill').hidden = true; drawMarkers(); drawRoute(); }
 $('#histPillX').onclick = closeHistView;
 
 /* ---- Elegir en el mapa (punto fijo en el centro: sin toques accidentales) ---- */
@@ -426,7 +454,8 @@ function renderLegs() {
     if (routing || !legs.length) { el.textContent = routing ? 'calculando…' : ''; return; }
     let acc = 0; for (let k = 0; k <= i; k++) acc += legs[k] || 0;
     const ld = R.legsDur && R.legsDur[i] != null ? R.legsDur[i] * D.set.tf + D.set.pm : null;
-    el.innerHTML = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''}<span class="acc"> · total ${nf1.format(acc)}</span>`;
+    const same = i < D.cur.stops.length ? D.cur.stops.findIndex((s, k) => k < i && near(s, D.cur.stops[i])) : -1;
+    el.innerHTML = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''}${same >= 0 ? `<span class="same">${ic('rep')}Vuelves a la parada ${same + 1}</span>` : ''}<span class="acc"> · total ${nf1.format(acc)}</span>`;
   });
 }
 function renderRuta() {
