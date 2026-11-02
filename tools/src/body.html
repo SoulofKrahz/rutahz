@@ -102,9 +102,13 @@
           <div><b id="costV">0,00 €</b><span>Coste est.</span></div>
           <div><b id="nV">0</b><span>Paradas</span></div>
         </div>
-        <div class="row" style="margin-top:10px;padding-bottom:0">
-          <div><b id="retT">Volver al punto de partida</b><small id="retS">Suma el regreso al terminar la última visita</small></div>
-          <label class="sw"><input type="checkbox" id="retSw" aria-label="Volver al punto de partida al terminar"><span></span></label>
+        <label class="row rowsw" style="margin-top:10px">
+          <div><b id="retT">Volver al punto de partida</b><small id="retS">Suma el regreso tras la última visita</small></div>
+          <span class="sw"><input type="checkbox" id="retSw" aria-label="Volver al punto de partida al terminar"><span></span></span>
+        </label>
+        <div class="sumact">
+          <div id="saveN"><button class="btn w" id="bSave"><svg class="i"><use href="#i-ck"/></svg>Guardar jornada</button></div>
+          <div id="saveE" hidden class="brow"><button class="btn g" id="bEditNo">Cancelar edición</button><button class="btn" id="bEditOk"><svg class="i"><use href="#i-ck"/></svg>Guardar cambios</button></div>
         </div>
       </div>
 
@@ -132,6 +136,7 @@
           </div>
           <div id="clientsBox"></div>
         </div>
+        <div class="lks" id="stopsFoot" hidden><button class="dg" id="bClear"><svg class="i"><use href="#i-trash"/></svg>Vaciar ruta</button></div>
       </div>
 
       <div class="card">
@@ -140,11 +145,7 @@
         <p class="hint" style="margin-top:6px">Solo para ti. Salen en el informe y al compartir solo si lo eliges.</p>
       </div>
 
-      <div class="savez">
-        <div id="saveN"><button class="btn" id="bSave"><svg class="i"><use href="#i-ck"/></svg>Guardar jornada</button></div>
-        <div id="saveE" hidden class="brow"><button class="btn g" id="bEditNo">Cancelar edición</button><button class="btn" id="bEditOk"><svg class="i"><use href="#i-ck"/></svg>Guardar cambios</button></div>
-        <div class="lks" style="margin-top:6px"><button id="bUndo"><svg class="i"><use href="#i-undo"/></svg>Quitar la última</button><button class="dg" id="bClear"><svg class="i"><use href="#i-trash"/></svg>Vaciar ruta</button></div>
-      </div>
+      <div class="endsave" id="endSave" hidden><button class="btn w" id="bSave2"><svg class="i"><use href="#i-ck"/></svg><span id="bSave2T">Guardar jornada</span></button></div>
     </section>
 
     <!-- ===== DESTINOS ===== -->

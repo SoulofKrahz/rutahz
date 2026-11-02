@@ -228,9 +228,11 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .clh h3{font:600 .6875rem Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mu)}
 .clh button{font-size:.75rem;font-weight:600;color:var(--em);padding:6px 4px}
 .selb{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--tint);font-size:.8125rem}
-.savez{position:relative;bottom:0;z-index:4;margin:0 -16px -28px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 26%)}
-@media(max-width:900px){.savez{bottom:calc(var(--bbh) + env(safe-area-inset-bottom));margin:0 -14px -24px;padding:10px 14px 12px}}
-.savez.on{position:sticky}.savez .btn{width:100%;min-height:52px;font-size:.9375rem;box-shadow:0 10px 24px -12px var(--em)}
+.sumact{margin-top:14px}.sumact .btn{min-height:50px;font-size:.9375rem}
+.endsave .btn{min-height:52px;font-size:.9375rem}
+.rowsw{cursor:pointer}.rowsw:active{opacity:.85}
+.pt .tx small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stopsFoot{margin-top:8px;padding-top:4px;border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}
 .lks{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:.8125rem}.lks button{color:var(--mu);font-weight:600;padding:8px 4px;display:inline-flex;align-items:center;gap:6px}.lks button:hover{color:var(--em)}.lks button.dg:hover{color:var(--dg)}.lks svg{width:15px;height:15px}
 
 /* ===== Destinos ===== */
@@ -242,6 +244,38 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .dr .bd small{display:block;font-size:.75rem;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dr .in{flex:none;font-size:.6875rem;font-weight:700;color:var(--em);background:var(--tint);border-radius:99px;padding:2px 8px}
 .dsel{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:14px;background:var(--tint);font-size:.8125rem;position:sticky;top:8px;z-index:3}
+
+/* ===== Móvil y táctil ===== */
+@media(max-width:900px){
+ .mapw{height:clamp(200px,36dvh,380px);min-height:0}
+ .bar{padding-left:max(14px,env(safe-area-inset-left))}
+ .sum{padding:16px}.sumk .v{font-size:2.375rem}.sumg{gap:6px}.sumg div b{font-size:1rem}
+ .card{padding:14px}.view{gap:12px}
+ .tabs{display:none}
+}
+@media(max-width:360px){.sumg div span{font-size:.625rem;letter-spacing:.02em}.lw{font-size:1.3rem}.kmchip{padding:3px 8px}}
+/* Sin zoom al escribir en iPhone: los campos nunca por debajo de 16 px */
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]),textarea,select{font-size:max(16px,1em)}
+.pt .tx input.nm{font-size:max(16px,.9375rem)}.pt .tx small input[type=time]{font-size:16px;padding:2px 0}
+@media(pointer:coarse),(max-width:760px){
+ .gb{width:44px;height:44px}.ib{width:44px;height:44px}
+ .pt .ac .gb.rm{display:none}
+ .pt{padding:8px 0;gap:10px}
+ .sw{width:52px;height:32px}.sw span::after{width:26px;height:26px}.sw input:checked+span::after{transform:translateX(20px)}
+ .lnk{padding:12px 6px;margin:-12px -6px}
+ .clh button{padding:12px 6px;margin:-6px 0}
+ .lks button{min-height:44px}
+ .kmchip{min-height:42px;justify-content:center}
+ .btn.sm{min-height:42px}
+ .cl{min-height:42px}
+ .mtools button{width:46px;height:46px}
+}
+@media(max-width:400px){
+ .pt .tx small .acc{display:none}
+ .pt .ac .gb.on{display:none} /* la estrella decorativa cede su sitio al nombre */
+ .dr .in{font-size:0;padding:3px;width:22px;height:22px;display:grid;place-items:center}.dr .in::before{content:"✓";font-size:.75rem}
+ .dr{gap:10px}.dr .ic0{width:30px;height:30px}
+}
 
 /* ===== Historial ===== */
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 .75rem Inter,sans-serif;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:10px 4px 0}
@@ -462,9 +496,13 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           <div><b id="costV">0,00 €</b><span>Coste est.</span></div>
           <div><b id="nV">0</b><span>Paradas</span></div>
         </div>
-        <div class="row" style="margin-top:10px;padding-bottom:0">
-          <div><b id="retT">Volver al punto de partida</b><small id="retS">Suma el regreso al terminar la última visita</small></div>
-          <label class="sw"><input type="checkbox" id="retSw" aria-label="Volver al punto de partida al terminar"><span></span></label>
+        <label class="row rowsw" style="margin-top:10px">
+          <div><b id="retT">Volver al punto de partida</b><small id="retS">Suma el regreso tras la última visita</small></div>
+          <span class="sw"><input type="checkbox" id="retSw" aria-label="Volver al punto de partida al terminar"><span></span></span>
+        </label>
+        <div class="sumact">
+          <div id="saveN"><button class="btn w" id="bSave"><svg class="i"><use href="#i-ck"/></svg>Guardar jornada</button></div>
+          <div id="saveE" hidden class="brow"><button class="btn g" id="bEditNo">Cancelar edición</button><button class="btn" id="bEditOk"><svg class="i"><use href="#i-ck"/></svg>Guardar cambios</button></div>
         </div>
       </div>
 
@@ -492,6 +530,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           </div>
           <div id="clientsBox"></div>
         </div>
+        <div class="lks" id="stopsFoot" hidden><button class="dg" id="bClear"><svg class="i"><use href="#i-trash"/></svg>Vaciar ruta</button></div>
       </div>
 
       <div class="card">
@@ -500,11 +539,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
         <p class="hint" style="margin-top:6px">Solo para ti. Salen en el informe y al compartir solo si lo eliges.</p>
       </div>
 
-      <div class="savez">
-        <div id="saveN"><button class="btn" id="bSave"><svg class="i"><use href="#i-ck"/></svg>Guardar jornada</button></div>
-        <div id="saveE" hidden class="brow"><button class="btn g" id="bEditNo">Cancelar edición</button><button class="btn" id="bEditOk"><svg class="i"><use href="#i-ck"/></svg>Guardar cambios</button></div>
-        <div class="lks" style="margin-top:6px"><button id="bUndo"><svg class="i"><use href="#i-undo"/></svg>Quitar la última</button><button class="dg" id="bClear"><svg class="i"><use href="#i-trash"/></svg>Vaciar ruta</button></div>
-      </div>
+      <div class="endsave" id="endSave" hidden><button class="btn w" id="bSave2"><svg class="i"><use href="#i-ck"/></svg><span id="bSave2T">Guardar jornada</span></button></div>
     </section>
 
     <!-- ===== DESTINOS ===== -->
@@ -628,7 +663,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-0';
+const VER = '2026-11-02-1';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1103,7 +1138,7 @@ function renderClients() {
   const box = $('#clientsBox');
   if (!D.clients.length) { box.innerHTML = `<p class="hint">Guarda tus sitios habituales en <button class="lnk" id="goDest">Destinos</button> (o con ⋯ › «Guardar en mis destinos» en cada parada) y los añadirás en un toque.</p>`; $('#goDest').onclick = () => setView('dest'); return; }
   const cnt = visitCounts(), list = D.clients.slice().sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0) || a.label.localeCompare(b.label, 'es'));
-  const N = 12, shown = showAllCl || multi ? list : list.slice(0, N);
+  const N = isMob() ? 6 : 12, shown = showAllCl || multi ? list : list.slice(0, N);
   let h = `<div class="clh"><h3>Tus destinos</h3><span><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button><button id="clGo" style="margin-left:8px">Todos</button></span></div><div class="cls" style="margin-top:8px">`;
   shown.forEach(c => { const si = sel.indexOf(c.id); h += `<button class="cl ${si >= 0 ? 'on' : ''}" data-id="${c.id}">${si >= 0 ? `<b>${si + 1}</b>` : ''}<span>${esc(c.label)}</span>${cnt.get(c.id) ? `<i>${cnt.get(c.id)}</i>` : ''}</button>`; });
   if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>+${list.length - N} más</span></button>`;
@@ -1252,7 +1287,7 @@ function renderLegs() {
     if (routing || !legs.length) { el.textContent = routing ? 'calculando…' : ''; return; }
     let acc = 0; for (let k = 0; k <= i; k++) acc += legs[k] || 0;
     const ld = R.legsDur && R.legsDur[i] != null ? R.legsDur[i] * D.set.tf + D.set.pm : null;
-    el.textContent = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''} · ${nf1.format(acc)} km en total`;
+    el.innerHTML = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''}<span class="acc"> · total ${nf1.format(acc)}</span>`;
   });
 }
 function renderRuta() {
@@ -1294,8 +1329,9 @@ function renderRuta() {
     });
   }
   $('#retSw').checked = !!c.ret; renderRetLabel();
-  $('#bUndo').disabled = !c.stops.length; $('#bUndo').style.opacity = c.stops.length ? '' : '.4';
-  $('#bSave').disabled = !c.start || !c.stops.length; $('.savez').classList.toggle('on', !!(c.start && c.stops.length)); $('#bEditOk').disabled = !c.start || !c.stops.length;
+  const can = !!(c.start && c.stops.length);
+  $('#bSave').disabled = !can; $('#bEditOk').disabled = !can; $('#stopsFoot').hidden = !c.stops.length;
+  $('.sumact').hidden = !can && !D.edit; $('#endSave').hidden = !can || c.stops.length < 3; $('#bSave2T').textContent = D.edit ? 'Guardar cambios' : 'Guardar jornada';
   if ($('#notes').value !== (c.notes || '')) $('#notes').value = c.notes || '';
   renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute(); if (view === 'dest') renderDest();
 }
@@ -1308,7 +1344,7 @@ $('#bStartPick').onclick = () => startPick('start');
 $('#bStartGps').onclick = () => gps(async p => setStart(p.lat, p.lon, await labelFor(p.lat, p.lon, 'Mi ubicación')));
 $('#bStopPick').onclick = () => { if (!D.cur.start) return toast('Primero elige el punto de partida.'); startPick('stop'); };
 $('#bStopGps').onclick = () => { if (!D.cur.start) return toast('Primero elige el punto de partida.'); gps(async p => addStop(p.lat, p.lon, await labelFor(p.lat, p.lon, `Parada ${D.cur.stops.length + 1}`))); };
-$('#bUndo').onclick = () => { const s = D.cur.stops[D.cur.stops.length - 1]; if (s) removeStop(s); };
+$('#bSave2').onclick = () => (D.edit ? $('#bEditOk') : $('#bSave')).click();
 $('#bClear').onclick = async () => {
   if (D.edit) return cancelEdit();
   if (!D.cur.stops.length && !D.cur.notes) return toast('La ruta ya está vacía.');

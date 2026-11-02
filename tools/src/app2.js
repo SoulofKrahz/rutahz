@@ -263,7 +263,7 @@ function renderClients() {
   const box = $('#clientsBox');
   if (!D.clients.length) { box.innerHTML = `<p class="hint">Guarda tus sitios habituales en <button class="lnk" id="goDest">Destinos</button> (o con ⋯ › «Guardar en mis destinos» en cada parada) y los añadirás en un toque.</p>`; $('#goDest').onclick = () => setView('dest'); return; }
   const cnt = visitCounts(), list = D.clients.slice().sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0) || a.label.localeCompare(b.label, 'es'));
-  const N = 12, shown = showAllCl || multi ? list : list.slice(0, N);
+  const N = isMob() ? 6 : 12, shown = showAllCl || multi ? list : list.slice(0, N);
   let h = `<div class="clh"><h3>Tus destinos</h3><span><button id="clMulti">${multi ? 'Cancelar' : 'Varios a la vez'}</button><button id="clGo" style="margin-left:8px">Todos</button></span></div><div class="cls" style="margin-top:8px">`;
   shown.forEach(c => { const si = sel.indexOf(c.id); h += `<button class="cl ${si >= 0 ? 'on' : ''}" data-id="${c.id}">${si >= 0 ? `<b>${si + 1}</b>` : ''}<span>${esc(c.label)}</span>${cnt.get(c.id) ? `<i>${cnt.get(c.id)}</i>` : ''}</button>`; });
   if (!showAllCl && !multi && list.length > N) h += `<button class="cl" id="clAll"><span>+${list.length - N} más</span></button>`;
@@ -412,7 +412,7 @@ function renderLegs() {
     if (routing || !legs.length) { el.textContent = routing ? 'calculando…' : ''; return; }
     let acc = 0; for (let k = 0; k <= i; k++) acc += legs[k] || 0;
     const ld = R.legsDur && R.legsDur[i] != null ? R.legsDur[i] * D.set.tf + D.set.pm : null;
-    el.textContent = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''} · ${nf1.format(acc)} km en total`;
+    el.innerHTML = `+${nf1.format(legs[i] || 0)} km${ld != null ? ' · ' + fmtDur(ld) : ''}<span class="acc"> · total ${nf1.format(acc)}</span>`;
   });
 }
 function renderRuta() {
@@ -454,8 +454,9 @@ function renderRuta() {
     });
   }
   $('#retSw').checked = !!c.ret; renderRetLabel();
-  $('#bUndo').disabled = !c.stops.length; $('#bUndo').style.opacity = c.stops.length ? '' : '.4';
-  $('#bSave').disabled = !c.start || !c.stops.length; $('.savez').classList.toggle('on', !!(c.start && c.stops.length)); $('#bEditOk').disabled = !c.start || !c.stops.length;
+  const can = !!(c.start && c.stops.length);
+  $('#bSave').disabled = !can; $('#bEditOk').disabled = !can; $('#stopsFoot').hidden = !c.stops.length;
+  $('.sumact').hidden = !can && !D.edit; $('#endSave').hidden = !can || c.stops.length < 3; $('#bSave2T').textContent = D.edit ? 'Guardar cambios' : 'Guardar jornada';
   if ($('#notes').value !== (c.notes || '')) $('#notes').value = c.notes || '';
   renderClients(); renderSum(); renderLegs(); drawMarkers(); drawRoute(); if (view === 'dest') renderDest();
 }
@@ -468,7 +469,7 @@ $('#bStartPick').onclick = () => startPick('start');
 $('#bStartGps').onclick = () => gps(async p => setStart(p.lat, p.lon, await labelFor(p.lat, p.lon, 'Mi ubicación')));
 $('#bStopPick').onclick = () => { if (!D.cur.start) return toast('Primero elige el punto de partida.'); startPick('stop'); };
 $('#bStopGps').onclick = () => { if (!D.cur.start) return toast('Primero elige el punto de partida.'); gps(async p => addStop(p.lat, p.lon, await labelFor(p.lat, p.lon, `Parada ${D.cur.stops.length + 1}`))); };
-$('#bUndo').onclick = () => { const s = D.cur.stops[D.cur.stops.length - 1]; if (s) removeStop(s); };
+$('#bSave2').onclick = () => (D.edit ? $('#bEditOk') : $('#bSave')).click();
 $('#bClear').onclick = async () => {
   if (D.edit) return cancelEdit();
   if (!D.cur.stops.length && !D.cur.notes) return toast('La ruta ya está vacía.');
