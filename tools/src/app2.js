@@ -373,7 +373,7 @@ function destVisits(c) {
   dlg({ title: c.label, acts: [{ t: 'Cerrar', v: null }], html: `<div class="card" style="padding:2px 14px;box-shadow:none;max-height:50dvh;overflow:auto">${js.map(j => `<div class="row"><div><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</b><small>${esc(j.label)} · ${fmtKm(j.tot.road)}</small></div></div>`).join('')}</div>` });
 }
 function newDest() {
-  dlg({ title: 'Nuevo destino', acts: [{ t: 'Cancelar', cls: 'g', v: null }],
+  dlg({ title: 'Nuevo destino', focus: true, acts: [{ t: 'Cancelar', cls: 'g', v: null }],
     html: `<div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="ndQ" type="search" placeholder="Dirección o municipio" autocomplete="off" enterkeyhint="search" aria-label="Buscar dirección del destino"><div class="sugg" id="ndS" hidden></div></div>
       <div class="brow"><button class="btn g sm" id="ndMap">${ic('pin')}Elegir en el mapa</button><button class="btn g sm" id="ndGps">${ic('loc')}Estoy aquí</button></div>`,
     open: b => {
