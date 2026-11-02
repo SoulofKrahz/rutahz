@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Generar version.txt (aviso de versión nueva)
-        run: grep -o "const VER = '[^']*'" site/index.html | cut -d"'" -f2 > site/version.txt && cat site/version.txt
+        run: grep -m1 -oE "const VER = '[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9.]+'" site/index.html | head -1 | cut -d"'" -f2 > site/version.txt && cat site/version.txt && grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9.]+$' site/version.txt
       - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -392,7 +392,7 @@ async function applyUpdate() {
     const r = await navigator.serviceWorker?.getRegistration(); if (r) await r.update();
     // Con «?u=» el service worker no puede contestar con su copia guardada: llega siempre la página publicada
     const res = await fetch('index.html?u=' + Date.now(), { cache: 'no-store' });
-    if (res.ok && /const VER = '/.test(await res.clone().text())) for (const k of (await caches.keys()).filter(k => /^rz-v\d+$/.test(k))) { const c = await caches.open(k); await c.put('index.html', res.clone()); await c.put('./', res.clone()); }
+    if (res.ok && /\bVER = '\d{4}-/.test(await res.clone().text())) for (const k of (await caches.keys()).filter(k => /^rz-v\d+$/.test(k))) { const c = await caches.open(k); await c.put('index.html', res.clone()); await c.put('./', res.clone()); }
   } catch (e) {}
   location.reload();
 }
