@@ -13,13 +13,14 @@ const PIN = '1234';
 // Servidor estático de site/. `version` permite simular que hay una versión publicada más nueva.
 function serve() {
   return new Promise(res => {
-    const st = { version: null };
+    const st = { version: null, pageVer: null, files: {} }; // files: contenido alternativo por ruta (p. ej. un sw.js antiguo) // pageVer: sirve index.html como si fuera esa versión (prueba con service worker)
     const srv = http.createServer((q, s) => {
       const u = decodeURIComponent(q.url.split('?')[0]);
       if (u === '/version.txt' && st.version) { s.writeHead(200, { 'Content-Type': 'text/plain' }); return s.end(st.version + '\n'); }
+      if (st.files[u] != null) { s.writeHead(200, { 'Content-Type': (u.endsWith('/') ? 'text/html' : MIME[u.split('.').pop()] || 'text/plain') }); return s.end(st.files[u]); }
       const f = path.join(SITE, u.replace(/\/$/, '/index.html'));
       if (!f.startsWith(SITE)) { s.writeHead(403); return s.end(); }
-      fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); return s.end(); } s.writeHead(200, { 'Content-Type': MIME[f.split('.').pop()] || 'application/octet-stream' }); s.end(b); });
+      fs.readFile(f, (e, b) => { if (e) { s.writeHead(404); return s.end(); } if (st.pageVer && f.endsWith('index.html')) b = b.toString().replace(/const VER = '[^']+'/, `const VER = '${st.pageVer}'`); s.writeHead(200, { 'Content-Type': MIME[f.split('.').pop()] || 'application/octet-stream' }); s.end(b); });
     });
     srv.listen(0, '127.0.0.1', () => res({ base: `http://127.0.0.1:${srv.address().port}/`, st, close: () => srv.close() }));
   });
@@ -36,7 +37,7 @@ const json = (r, body) => r.fulfill({ contentType: 'application/json', headers: 
 //  seed → { data, meta, pf } que se escriben en localStorage una sola vez por pestaña.
 //  geo → resultados de búsqueda (/g/search); por defecto ninguno (la app usa su lista de pueblos).
 async function context(browser, base, o = {}) {
-  const ctx = await browser.newContext({ ...(o.device || devices['iPhone 13']), serviceWorkers: 'block', locale: 'es-ES', timezoneId: 'Europe/Madrid', acceptDownloads: true });
+  const ctx = await browser.newContext({ ...(o.device || devices['iPhone 13']), serviceWorkers: o.sw ? 'allow' : 'block', locale: 'es-ES', timezoneId: 'Europe/Madrid', acceptDownloads: true });
   const leg = o.leg || (() => ({ distance: 10000, duration: 600 }));
   ctx.calls = { r: 0, t: 0 };
   await ctx.route(/fonts\.(googleapis|gstatic)/, r => r.fulfill({ status: 204 }));

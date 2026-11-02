@@ -258,6 +258,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-11', d: '2026-11-02', t: 'Actualizar funciona a la primera', i: [
+    'Arreglado: en algunos móviles el aviso de versión nueva volvía a salir después de actualizar.'] },
   { v: '2026-11-02-10', d: '2026-11-02', t: 'Más fácil de tocar', i: [
     'Los interruptores de <b>Ajustes</b> y la lista de <b>Destinos más visitados</b> tienen más zona para el dedo en el móvil.'] },
   { v: '2026-11-02-9', d: '2026-11-02', t: 'De un destino a sus visitas', i: [
@@ -386,7 +388,12 @@ async function applyUpdate() {
   flush(); toast('Actualizando…', { ms: 8000 });
   if (!locked) { try { sessionStorage.setItem(UL_KEY, String(Date.now() + 120000)); } catch (e) {} }
   else { $('#lockSub').textContent = 'Actualizando…'; $('#lockUpd').disabled = true; }
-  try { const r = await navigator.serviceWorker?.getRegistration(); if (r) await r.update(); const res = await fetch('./', { cache: 'reload' }); if (res.ok) for (const k of (await caches.keys()).filter(k => /^rz-v\d+$/.test(k))) await (await caches.open(k)).put('index.html', res.clone()); } catch (e) {}
+  try {
+    const r = await navigator.serviceWorker?.getRegistration(); if (r) await r.update();
+    // Con «?u=» el service worker no puede contestar con su copia guardada: llega siempre la página publicada
+    const res = await fetch('index.html?u=' + Date.now(), { cache: 'no-store' });
+    if (res.ok && /const VER = '/.test(await res.clone().text())) for (const k of (await caches.keys()).filter(k => /^rz-v\d+$/.test(k))) { const c = await caches.open(k); await c.put('index.html', res.clone()); await c.put('./', res.clone()); }
+  } catch (e) {}
   location.reload();
 }
 $('#bUpd').onclick = () => checkUpdate(true);

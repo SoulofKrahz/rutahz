@@ -149,6 +149,26 @@ test('actualización', async ({ browser, base, st }) => {
   } finally { st.version = null; }
 });
 
+/* 6b · Actualización real con service worker: tras «Actualizar» se carga la versión publicada, a la primera */
+test('actualización con service worker', async ({ browser, base, st }) => {
+  const OLD = '2026-01-01-1'; st.pageVer = OLD; st.version = OLD;
+  try {
+    const ctx = await L.context(browser, base, { sw: true, device: devices['Pixel 7'], seed: { rz_meta: meta(VER) } }), p = await L.page(ctx);
+    await p.goto(base); await L.unlock(p, { create: true });
+    await p.evaluate(() => navigator.serviceWorker.ready); await p.waitForTimeout(1200);
+    ok(await p.evaluate(() => !!navigator.serviceWorker.controller), 'la app queda guardada por el service worker');
+    st.pageVer = null; st.version = null; // se publica la versión de verdad
+    await p.reload(); await L.unlock(p, { dismiss: false }); await p.waitForTimeout(600);
+    ok(await p.textContent('#verAbt') === 'Versión ' + OLD && await p.isVisible('#banner'), 'abre la copia guardada y avisa de la nueva');
+    await Promise.all([p.waitForNavigation(), p.click('#banner .acts button:has-text("Actualizar")')]); await p.waitForTimeout(1200);
+    if (await p.isVisible('#lock')) await L.unlock(p, { dismiss: false });
+    ok(await p.textContent('#verAbt') === 'Versión ' + VER, 'tras un «Actualizar» ya está la versión nueva → ' + await p.textContent('#verAbt'));
+    ok(!(await p.isVisible('#banner')), 'y el aviso ya no vuelve a salir');
+    ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+    await ctx.close();
+  } finally { st.pageVer = null; st.version = null; }
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

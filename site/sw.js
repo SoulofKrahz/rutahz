@@ -1,10 +1,10 @@
 // Rutahz — service worker. Si cambias iconos, manifest o index.html, sube el número de V.
-const V = 'rz-v14', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
+const V = 'rz-v15', FONTS = 'rz-fonts', LIBS = 'rz-libs', TILES = 'rz-tiles', MAX_TILES = 900;
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'icono.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 const KEEP = [V, FONTS, LIBS, TILES];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(V).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => !KEEP.includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -54,6 +54,8 @@ self.addEventListener('fetch', e => {
   if (u.origin === location.origin) {
     if (u.pathname.startsWith('/r/') || u.pathname.startsWith('/t/') || u.pathname.startsWith('/g/') || u.pathname === '/version.txt') return; // siempre por red
     if (r.mode === 'navigate') return e.respondWith(page(r, e));
+    // La propia página pedida desde la app (al actualizar): primero la red, para no devolver una copia vieja
+    if (u.pathname === '/' || u.pathname === '/index.html') return e.respondWith(fetch(r, { cache: 'no-store' }).then(x => { if (x.ok && !u.search) { const y = x.clone(); caches.open(V).then(c => c.put('index.html', y)); } return x; }).catch(() => caches.match('index.html')));
     // El manifest depende del color con el que se instaló (lo decide _worker.js por la cookie): siempre de la red
     if (u.pathname === '/manifest.webmanifest') return e.respondWith(fetch(r).then(x => { if (x.ok) { const y = x.clone(); caches.open(V).then(c => c.put('manifest.webmanifest', y)); } return x; }).catch(() => caches.match('manifest.webmanifest')));
     return e.respondWith(caches.match(r).then(h => h || fetch(r)));

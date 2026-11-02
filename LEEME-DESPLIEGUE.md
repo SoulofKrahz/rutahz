@@ -55,6 +55,7 @@ Abren la app en Chromium con los servicios externos simulados (OSRM, Nominatim, 
 | paradas repetidas en el mapa | Pin «1 · 3» al volver a una parada y aviso «Vuelves a la parada 1» |
 | ver jornada en el mapa | Vista de solo lectura en móvil y PC, sin tocar la ruta en curso; Atrás vuelve al historial |
 | actualización | Aviso en la pantalla del PIN, no pide el PIN dos veces, la siguiente apertura sí |
+| actualización con service worker | Con la app guardada por el service worker, un solo «Actualizar» carga la versión publicada y el aviso no vuelve |
 | copias y novedades | Enviar .txt, descargar .json, restaurar .txt, importar copia de la versión 1, novedades una sola vez |
 | visitas pulsables | Desde Destinos y Resumen una visita abre su jornada |
 | móvil táctil | iPhone SE y Pixel 7: ningún campo con letra < 16 px (zoom en iPhone) ni botón < 40 px |
