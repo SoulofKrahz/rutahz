@@ -294,6 +294,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]),
 .chgl h4{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:650 .9375rem Inter,sans-serif;margin:0 0 6px}
 .chgl h4 small{font-size:.6875rem;font-weight:600;color:var(--mu);white-space:nowrap}
 .chgl h4 .nw{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--onem);background:var(--em);border-radius:99px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+.chgl h4 small.cur{color:var(--em);white-space:normal}.chgl .cht{font-size:.8125rem;font-weight:600;color:var(--mu);margin:-2px 0 6px}
 .chgl ul{margin:0;padding-left:18px;font-size:.875rem;line-height:1.45}.chgl li{margin:3px 0}.chgl li b{font-weight:650}
 
 /* ===== Historial ===== */
@@ -337,7 +338,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]),
 .swc.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--em2)}
 input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radius:10px;background:none;padding:2px;flex:none}
 .abt{text-align:center;padding:18px 0 6px;display:flex;flex-direction:column;gap:4px;align-items:center}
-.abt .logo{margin:0 0 6px}.abt .lgi{display:block}.abt span{font-size:.8125rem;color:var(--mu)}.abt strong{color:var(--em);font-weight:700}
+.abt .logo{margin:0 0 6px}.abt .hint{margin:2px 0 0;font-size:.75rem}.abtn{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;border-radius:10px;color:var(--em);font-size:.8125rem;font-weight:600;min-height:40px}.abtn svg{width:16px;height:16px}.abtn:hover{background:var(--tint)}.abt .lgi{display:block}.abt span{font-size:.8125rem;color:var(--mu)}.abt strong{color:var(--em);font-weight:700}
 
 /* ===== Diálogos, hojas, avisos ===== */
 .ov{position:fixed;inset:0;background:#0008;z-index:60;animation:fade .15s}
@@ -659,15 +660,14 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
           <div class="seg" id="sgAl"><button data-v="0">Solo al abrir</button><button data-v="1">1 min</button><button data-v="5">5 min</button><button data-v="15">15 min</button></div>
           <button class="btn g w" id="bPin" style="margin-top:12px"><svg class="i"><use href="#i-lock"/></svg>Cambiar PIN</button>
         </section>
-        <section class="card set"><h2>Novedades</h2><p>Qué ha cambiado en cada versión.</p>
-          <button class="btn g w" id="bNews"><svg class="i"><use href="#i-star"/></svg>Ver novedades</button>
-        </section>
         <section class="card set"><h2>Versión</h2>
           <div class="row"><div><b id="verT"></b><small id="verS">Se actualiza sola al abrir con conexión.</small></div><button class="btn g sm" id="bUpd"><svg class="i"><use href="#i-refresh"/></svg>Buscar</button></div>
           <button class="btn g w" id="bHelp" style="margin-top:6px"><svg class="i"><use href="#i-help"/></svg>Cómo funciona</button>
         </section>
-        <div class="abt"><div class="logo"><svg class="lgi" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo64"/></svg><span class="lw">ruta<em>hz</em></span></div><span>Bitácora personal de rutas y kilómetros</span><span>Hecho por <strong>Krahz</strong></span>
-          <span class="hint" style="margin-top:6px;max-width:340px">Mapa © Esri y colaboradores de OpenStreetMap · Rutas: OSRM · Direcciones: Nominatim. Cada dispositivo guarda sus propios datos: nadie más los ve.</span></div>
+        <div class="abt"><div class="logo"><svg class="lgi" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo64"/></svg><span class="lw">ruta<em>hz</em></span><svg class="lp" viewBox="0 0 44 24" aria-hidden="true"><path d="M2 15H9C14 15 14 8 19.5 8H24.5C30 8 30 15 35 15H39"/><circle cx="41" cy="15" r="2"/></svg></div>
+          <span>Diseñado y creado por <strong>Krahz</strong></span><p class="hint" id="verAbt"></p>
+          <button class="abtn" id="bNews"><svg class="i"><use href="#i-ck"/></svg>Novedades</button>
+          <span class="hint" style="margin-top:10px;max-width:340px">Mapa © Esri y colaboradores de OpenStreetMap · Rutas: OSRM · Direcciones: Nominatim. Cada dispositivo guarda sus propios datos: nadie más los ve.</span></div>
       </div>
     </section>
   </main>
@@ -689,7 +689,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-3';
+const VER = '2026-11-02-4';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -2020,6 +2020,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-4', d: '2026-11-02', t: 'Novedades en su sitio', i: [
+    'Las <b>Novedades</b> están ahora al final de Ajustes › App, junto a la versión, como en las demás apps hz.'] },
   { v: '2026-11-02-3', d: '2026-11-02', t: 'Copias y novedades', i: [
     '<b>Enviar copia</b> ahora abre el menú para compartir (WhatsApp, correo, Drive) también en Android. Antes acababa descargando, igual que el otro botón.',
     '<b>Guardar en este dispositivo</b> la deja en Descargas. Restaurar acepta los dos formatos.',
@@ -2047,11 +2049,12 @@ const NEWS = [
     'Informes en PDF y Excel por mes, año o fechas.',
     'Copia de seguridad que se envía directamente y PIN más seguro.'] },
 ];
+// Como en noticiahz: cada versión con su número; la primera es la que tienes
 function showNews(since) {
   const list = since ? NEWS.filter(n => n.v > since) : NEWS;
   if (!list.length) return;
-  dlg({ title: since ? 'Novedades de Rutahz' : 'Novedades', acts: [{ t: 'Entendido', v: null }],
-    html: `<div class="chgl">${list.map((n, k) => `<section><h4><span>${esc(n.t)}${since && k === 0 ? '<span class="nw">Nuevo</span>' : ''}</span><small>${esc(fmtDate(n.d, { day: 'numeric', month: 'short' }))}</small></h4><ul>${n.i.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>` });
+  dlg({ title: 'Novedades', acts: [{ t: 'Cerrar', v: null }],
+    html: `<div class="chgl">${list.map(n => `<section><h4><span>${esc(n.v)}${n.v === NEWS[0].v ? ' <small class="cur">· la que tienes</small>' : ''}</span><small>${esc(fmtDate(n.d, { day: 'numeric', month: 'short' }))}</small></h4><p class="cht">${esc(n.t)}</p><ul>${n.i.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>` });
 }
 function maybeNews() {
   const seen = M.sv || (M.fu ? '2026-11-02-2' : null); M.sv = VER; saveM(); // quien ya usaba la app antes de esta sección ve solo lo último
@@ -2128,7 +2131,7 @@ async function applyUpdate() {
   location.reload();
 }
 $('#bUpd').onclick = () => checkUpdate(true);
-$('#verT').textContent = 'Rutahz ' + VER;
+$('#verT').textContent = 'Rutahz ' + VER; $('#verAbt').textContent = 'Versión ' + VER;
 
 /* =================== Vistas =================== */
 let view = 'ruta';

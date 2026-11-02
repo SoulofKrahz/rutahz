@@ -258,6 +258,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-4', d: '2026-11-02', t: 'Novedades en su sitio', i: [
+    'Las <b>Novedades</b> están ahora al final de Ajustes › App, junto a la versión, como en las demás apps hz.'] },
   { v: '2026-11-02-3', d: '2026-11-02', t: 'Copias y novedades', i: [
     '<b>Enviar copia</b> ahora abre el menú para compartir (WhatsApp, correo, Drive) también en Android. Antes acababa descargando, igual que el otro botón.',
     '<b>Guardar en este dispositivo</b> la deja en Descargas. Restaurar acepta los dos formatos.',
@@ -285,11 +287,12 @@ const NEWS = [
     'Informes en PDF y Excel por mes, año o fechas.',
     'Copia de seguridad que se envía directamente y PIN más seguro.'] },
 ];
+// Como en noticiahz: cada versión con su número; la primera es la que tienes
 function showNews(since) {
   const list = since ? NEWS.filter(n => n.v > since) : NEWS;
   if (!list.length) return;
-  dlg({ title: since ? 'Novedades de Rutahz' : 'Novedades', acts: [{ t: 'Entendido', v: null }],
-    html: `<div class="chgl">${list.map((n, k) => `<section><h4><span>${esc(n.t)}${since && k === 0 ? '<span class="nw">Nuevo</span>' : ''}</span><small>${esc(fmtDate(n.d, { day: 'numeric', month: 'short' }))}</small></h4><ul>${n.i.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>` });
+  dlg({ title: 'Novedades', acts: [{ t: 'Cerrar', v: null }],
+    html: `<div class="chgl">${list.map(n => `<section><h4><span>${esc(n.v)}${n.v === NEWS[0].v ? ' <small class="cur">· la que tienes</small>' : ''}</span><small>${esc(fmtDate(n.d, { day: 'numeric', month: 'short' }))}</small></h4><p class="cht">${esc(n.t)}</p><ul>${n.i.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>` });
 }
 function maybeNews() {
   const seen = M.sv || (M.fu ? '2026-11-02-2' : null); M.sv = VER; saveM(); // quien ya usaba la app antes de esta sección ve solo lo último
@@ -366,7 +369,7 @@ async function applyUpdate() {
   location.reload();
 }
 $('#bUpd').onclick = () => checkUpdate(true);
-$('#verT').textContent = 'Rutahz ' + VER;
+$('#verT').textContent = 'Rutahz ' + VER; $('#verAbt').textContent = 'Versión ' + VER;
 
 /* =================== Vistas =================== */
 let view = 'ruta';
