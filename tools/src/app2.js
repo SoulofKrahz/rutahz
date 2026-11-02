@@ -410,7 +410,15 @@ function destMenu(c) {
 }
 function destVisits(c) {
   const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
-  dlg({ title: c.label, acts: [{ t: 'Cerrar', v: null }], html: `<div class="card" style="padding:2px 14px;box-shadow:none;max-height:50dvh;overflow:auto">${js.map(j => `<div class="row"><div><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</b><small>${esc(j.label)} · ${fmtKm(j.tot.road)}</small></div></div>`).join('')}</div>` });
+  dlg({ title: c.label, text: `${js.length} visita${js.length > 1 ? 's' : ''}. Toca una para ver esa jornada.`, acts: [{ t: 'Cerrar', v: null }],
+    html: `<div class="vlist">${js.map(j => { const n = j.stops.findIndex(s => clientOf(s) === c) + 1; return `<button class="vit" data-id="${esc(j.id)}"><span class="dd"><b>${dOf(j.iso).getDate()}</b><small>${esc(dOf(j.iso).toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''))}</small></span><span class="bd"><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(/^./, x => x.toUpperCase()))}</b><small>${esc(j.label)} · parada ${n} de ${j.stops.length} · ${fmtKm(j.tot.road)}</small></span>${ic('n')}</button>`; }).join('')}</div>`,
+    open: b => b.querySelectorAll('.vit').forEach(x => x.onclick = () => { const j = D.hist.find(h => String(h.id) === x.dataset.id); if (!j) return; closeLayer(null); setTimeout(() => openVisit(j, c), 60); }) });
+}
+// Abre la jornada en su vista y centra el mapa en la parada de ese destino
+function openVisit(j, c) {
+  showHistOnMap(j);
+  const i = j.stops.findIndex(s => (c ? clientOf(s) === c : false));
+  if (i >= 0) setTimeout(() => focusVerStop(i), 450);
 }
 function newDest() {
   dlg({ title: 'Nuevo destino', focus: true, acts: [{ t: 'Cancelar', cls: 'g', v: null }],

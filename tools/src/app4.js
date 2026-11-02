@@ -258,6 +258,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-9', d: '2026-11-02', t: 'De un destino a sus visitas', i: [
+    'En <b>Destinos › Ver sus visitas</b>, toca una visita y se abre esa jornada con el mapa en ese sitio.',
+    'Lo mismo en <b>Resumen › Destinos más visitados</b>: las fechas llevan a la jornada.'] },
   { v: '2026-11-02-8', d: '2026-11-02', t: 'Actualizar sin repetir el PIN', i: [
     'Si hay una versión nueva, el aviso sale ya en la <b>pantalla del PIN</b>: actualizas y pones el PIN una sola vez.',
     'Y si actualizas estando dentro, la app se recarga <b>sin volver a pedirte el PIN</b>.'] },

@@ -307,6 +307,14 @@ button.pt.vr{width:100%;text-align:left;border-radius:12px;padding:8px 6px;margi
 .vracts{display:flex;gap:8px;flex-wrap:wrap}.vracts .btn{flex:1 1 30%}
 body.v-ver .mtools #mFit{display:grid}
 
+.vlist{display:flex;flex-direction:column;max-height:52dvh;overflow:auto;margin:0 -4px}
+.vit{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 6px;border-radius:12px;border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.vit:first-child{border-top:0}
+.vit:active,.vit:hover{background:var(--tint)}.vit .dd{flex:none;width:42px;text-align:center;padding:5px 0;border-radius:10px;background:var(--tint);color:var(--em)}
+.vit .dd b{display:block;font:600 1.125rem/1 Newsreader,serif}.vit .dd small{display:block;font-size:.625rem;font-weight:700;text-transform:uppercase}
+.vit .bd{flex:1;min-width:0}.vit .bd b{display:block;font-size:.875rem;font-weight:600}.vit .bd small{display:block;font-size:.75rem;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vit>svg{color:var(--mu);width:16px;height:16px}
+.rk .dt button{display:block;width:100%;text-align:left;padding:4px 0;color:var(--mu);font-size:.75rem;line-height:1.5}.rk .dt button:hover{color:var(--em)}
+
 /* ===== Historial ===== */
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 .75rem Inter,sans-serif;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:10px 4px 0}
 .gh span{text-transform:none;letter-spacing:0;font-weight:500}
@@ -472,6 +480,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <symbol id="i-sort" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h6"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
 <symbol id="i-l" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+<symbol id="i-n" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
 <symbol id="i-bigpin" viewBox="0 0 44 54"><path d="M22 52S4 34.6 4 21a18 18 0 0 1 36 0c0 13.6-18 31-18 31z" fill="currentColor" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="6.5" fill="#fff" stroke="none"/></symbol>
 </defs></svg>
 
@@ -702,7 +711,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-8';
+const VER = '2026-11-02-9';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1324,7 +1333,15 @@ function destMenu(c) {
 }
 function destVisits(c) {
   const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
-  dlg({ title: c.label, acts: [{ t: 'Cerrar', v: null }], html: `<div class="card" style="padding:2px 14px;box-shadow:none;max-height:50dvh;overflow:auto">${js.map(j => `<div class="row"><div><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</b><small>${esc(j.label)} · ${fmtKm(j.tot.road)}</small></div></div>`).join('')}</div>` });
+  dlg({ title: c.label, text: `${js.length} visita${js.length > 1 ? 's' : ''}. Toca una para ver esa jornada.`, acts: [{ t: 'Cerrar', v: null }],
+    html: `<div class="vlist">${js.map(j => { const n = j.stops.findIndex(s => clientOf(s) === c) + 1; return `<button class="vit" data-id="${esc(j.id)}"><span class="dd"><b>${dOf(j.iso).getDate()}</b><small>${esc(dOf(j.iso).toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''))}</small></span><span class="bd"><b>${esc(fmtDate(j.iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(/^./, x => x.toUpperCase()))}</b><small>${esc(j.label)} · parada ${n} de ${j.stops.length} · ${fmtKm(j.tot.road)}</small></span>${ic('n')}</button>`; }).join('')}</div>`,
+    open: b => b.querySelectorAll('.vit').forEach(x => x.onclick = () => { const j = D.hist.find(h => String(h.id) === x.dataset.id); if (!j) return; closeLayer(null); setTimeout(() => openVisit(j, c), 60); }) });
+}
+// Abre la jornada en su vista y centra el mapa en la parada de ese destino
+function openVisit(j, c) {
+  showHistOnMap(j);
+  const i = j.stops.findIndex(s => (c ? clientOf(s) === c : false));
+  if (i >= 0) setTimeout(() => focusVerStop(i), 450);
 }
 function newDest() {
   dlg({ title: 'Nuevo destino', focus: true, acts: [{ t: 'Cancelar', cls: 'g', v: null }],
@@ -1711,7 +1728,7 @@ function renderStats() {
   const mkm = months.map(k => sum(H.filter(j => monthKey(j.iso) === k), j => j.tot.road)), mx = Math.max(...mkm, 1);
   // clientes más visitados
   const rk = new Map();
-  H.forEach(j => j.stops.forEach(s => { const c = clientOf(s), k = c ? c.id : 'l:' + norm(s.label); if (!k || k === 'l:') return; if (!rk.has(k)) rk.set(k, { label: c ? c.label : s.label, n: 0, v: [] }); const r = rk.get(k); r.n++; r.v.push(j); }));
+  H.forEach(j => j.stops.forEach(s => { const c = clientOf(s), k = c ? c.id : 'l:' + norm(s.label); if (!k || k === 'l:') return; if (!rk.has(k)) rk.set(k, { label: c ? c.label : s.label, cid: c ? c.id : null, n: 0, v: [] }); const r = rk.get(k); r.n++; if (!r.v.includes(j)) r.v.push(j); }));
   const top = [...rk.values()].sort((a, b) => b.n - a.n).slice(0, 8);
   box.innerHTML = `
     <div class="card"><div class="ch"><span>${ic('cal')}Este periodo</span></div><div class="sg">
@@ -1731,8 +1748,9 @@ function renderStats() {
       <div><b>${fmtEur(sum(H, j => j.tot.cost))}</b><span>Coste estimado</span></div>
       <div><b>${fmtDur(sum(H, jDur))}</b><span>Al volante</span><small>${fmtDur(sum(H, jDur) / H.length)} por jornada</small></div>
     </div></div>
-    <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<div>${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)}</div>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
-  box.querySelectorAll('.rk button').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
+    <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<button data-j="${esc(j.id)}" data-r="${i}">${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)} ›</button>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
+  box.querySelectorAll('.rk button[data-i]').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
+  box.querySelectorAll('.rk .dt button').forEach(b => b.onclick = () => { const j = D.hist.find(h => String(h.id) === b.dataset.j); if (!j) return; const r = top[+b.dataset.r], c = r && r.cid ? D.clients.find(x => x.id === r.cid) : null; showHistOnMap(j); const i = j.stops.findIndex(s => c ? clientOf(s) === c : norm(s.label) === norm(r.label)); if (i >= 0) setTimeout(() => focusVerStop(i), 450); });
 }
 
 /* =================== Exportar: informe, CSV =================== */
@@ -2102,6 +2120,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-9', d: '2026-11-02', t: 'De un destino a sus visitas', i: [
+    'En <b>Destinos › Ver sus visitas</b>, toca una visita y se abre esa jornada con el mapa en ese sitio.',
+    'Lo mismo en <b>Resumen › Destinos más visitados</b>: las fechas llevan a la jornada.'] },
   { v: '2026-11-02-8', d: '2026-11-02', t: 'Actualizar sin repetir el PIN', i: [
     'Si hay una versión nueva, el aviso sale ya en la <b>pantalla del PIN</b>: actualizas y pones el PIN una sola vez.',
     'Y si actualizas estando dentro, la app se recarga <b>sin volver a pedirte el PIN</b>.'] },

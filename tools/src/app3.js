@@ -235,7 +235,7 @@ function renderStats() {
   const mkm = months.map(k => sum(H.filter(j => monthKey(j.iso) === k), j => j.tot.road)), mx = Math.max(...mkm, 1);
   // clientes más visitados
   const rk = new Map();
-  H.forEach(j => j.stops.forEach(s => { const c = clientOf(s), k = c ? c.id : 'l:' + norm(s.label); if (!k || k === 'l:') return; if (!rk.has(k)) rk.set(k, { label: c ? c.label : s.label, n: 0, v: [] }); const r = rk.get(k); r.n++; r.v.push(j); }));
+  H.forEach(j => j.stops.forEach(s => { const c = clientOf(s), k = c ? c.id : 'l:' + norm(s.label); if (!k || k === 'l:') return; if (!rk.has(k)) rk.set(k, { label: c ? c.label : s.label, cid: c ? c.id : null, n: 0, v: [] }); const r = rk.get(k); r.n++; if (!r.v.includes(j)) r.v.push(j); }));
   const top = [...rk.values()].sort((a, b) => b.n - a.n).slice(0, 8);
   box.innerHTML = `
     <div class="card"><div class="ch"><span>${ic('cal')}Este periodo</span></div><div class="sg">
@@ -255,8 +255,9 @@ function renderStats() {
       <div><b>${fmtEur(sum(H, j => j.tot.cost))}</b><span>Coste estimado</span></div>
       <div><b>${fmtDur(sum(H, jDur))}</b><span>Al volante</span><small>${fmtDur(sum(H, jDur) / H.length)} por jornada</small></div>
     </div></div>
-    <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<div>${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)}</div>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
-  box.querySelectorAll('.rk button').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
+    <div class="card"><div class="ch"><span>${ic('dest')}Destinos más visitados</span><small>toca para ver fechas</small></div><div class="rk">${top.length ? top.map((r, i) => `<div><button data-i="${i}" aria-expanded="false"><span class="p">${i + 1}</span><span class="b"><b>${esc(r.label)}</b><span class="t"><i style="width:${Math.round(r.n / top[0].n * 100)}%"></i></span></span><span class="c">${r.n} visita${r.n > 1 ? 's' : ''}</span></button><div class="dt" hidden>${r.v.slice().sort((a, b) => (b.iso || '').localeCompare(a.iso || '')).slice(0, 8).map(j => `<button data-j="${esc(j.id)}" data-r="${i}">${esc(fmtDate(j.iso, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))} · ${esc(j.label)} ›</button>`).join('')}</div></div>`).join('') : '<p class="hint">Sin paradas todavía.</p>'}</div></div>`;
+  box.querySelectorAll('.rk button[data-i]').forEach(b => b.onclick = () => { const d = b.nextElementSibling; d.hidden = !d.hidden; b.setAttribute('aria-expanded', String(!d.hidden)); });
+  box.querySelectorAll('.rk .dt button').forEach(b => b.onclick = () => { const j = D.hist.find(h => String(h.id) === b.dataset.j); if (!j) return; const r = top[+b.dataset.r], c = r && r.cid ? D.clients.find(x => x.id === r.cid) : null; showHistOnMap(j); const i = j.stops.findIndex(s => c ? clientOf(s) === c : norm(s.label) === norm(r.label)); if (i >= 0) setTimeout(() => focusVerStop(i), 450); });
 }
 
 /* =================== Exportar: informe, CSV =================== */
