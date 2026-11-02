@@ -258,6 +258,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-8', d: '2026-11-02', t: 'Actualizar sin repetir el PIN', i: [
+    'Si hay una versión nueva, el aviso sale ya en la <b>pantalla del PIN</b>: actualizas y pones el PIN una sola vez.',
+    'Y si actualizas estando dentro, la app se recarga <b>sin volver a pedirte el PIN</b>.'] },
   { v: '2026-11-02-7', d: '2026-11-02', t: 'Ver una jornada', i: [
     '<b>Ver en el mapa</b> abre una pantalla propia de esa jornada: su ruta en el mapa y debajo el recorrido con km y tiempo de cada tramo, las notas y los botones Compartir, Editar y Repetir.',
     'Toca una parada de la lista para ir a ella en el mapa. La flecha de atrás vuelve al historial.'] },
@@ -368,16 +371,21 @@ async function checkUpdate(manual) {
   if (!navigator.onLine || !/^https?:$/.test(location.protocol)) { if (manual) toast('Necesitas conexión para comprobarlo.'); return; }
   try {
     const t = (await (await fetch('version.txt', { cache: 'no-store' })).text()).trim();
-    if (/^\d{4}-\d{2}-\d{2}-[\d.]+$/.test(t) && t !== VER) { newVer = t; maybeBanner(); if (manual) toast('Hay una versión nueva: ' + t); }
+    if (/^\d{4}-\d{2}-\d{2}-[\d.]+$/.test(t) && t !== VER) { newVer = t; $('#lockUpd').hidden = false; maybeBanner(); if (manual) toast('Hay una versión nueva: ' + t); }
     else if (manual) toast('Tienes la última versión.');
   } catch (e) { if (manual) toast('No se ha podido comprobar ahora.'); }
 }
+// Si ya has puesto el PIN, la recarga de la actualización no lo vuelve a pedir (válido 2 min, solo en esta pestaña)
+const UL_KEY = 'rz_ul';
 async function applyUpdate() {
   flush(); toast('Actualizando…', { ms: 8000 });
+  if (!locked) { try { sessionStorage.setItem(UL_KEY, String(Date.now() + 120000)); } catch (e) {} }
+  else { $('#lockSub').textContent = 'Actualizando…'; $('#lockUpd').disabled = true; }
   try { const r = await navigator.serviceWorker?.getRegistration(); if (r) await r.update(); const res = await fetch('./', { cache: 'reload' }); if (res.ok) for (const k of (await caches.keys()).filter(k => /^rz-v\d+$/.test(k))) await (await caches.open(k)).put('index.html', res.clone()); } catch (e) {}
   location.reload();
 }
 $('#bUpd').onclick = () => checkUpdate(true);
+$('#lockUpd').onclick = applyUpdate;
 $('#verT').textContent = 'Rutahz ' + VER; $('#verAbt').textContent = 'Versión ' + VER;
 
 /* =================== Vistas =================== */
@@ -413,10 +421,12 @@ syncSettings(); syncA11y(); renderAccent(); applyTheme(P.th || 'auto'); renderIn
 applyScope(); renderAll();
 if (pointsOf(D.cur).length) setTimeout(() => { map.invalidateSize(); fitCur(); }, 120);
 recalc();
-if (hasPin()) showLock('unlock', 'boot'); else showLock('create', 'boot');
+let skipPin = false; try { const u = +sessionStorage.getItem(UL_KEY); sessionStorage.removeItem(UL_KEY); skipPin = u > Date.now(); } catch (e) {}
+if (hasPin() && skipPin) { locked = false; setTimeout(() => { map.invalidateSize(); if (!maybeNews()) maybeBanner(); }, 300); }
+else if (hasPin()) showLock('unlock', 'boot'); else showLock('create', 'boot');
 persistStorage();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) navigator.serviceWorker.register('sw.js').catch(() => {});
-setTimeout(() => checkUpdate(false), 2500);
+checkUpdate(false); // enseguida: si hay versión nueva, el aviso sale ya en la pantalla del PIN
 window.__rz = { D, get R() { return R; }, importBackup, setView };
 })();
 </script>
