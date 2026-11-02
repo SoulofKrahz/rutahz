@@ -11,6 +11,10 @@ jobs:
           for u in https://rutahz.pages.dev/ https://rutahz.pages.dev/version.txt "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" https://rutahz.pages.dev/manifest.webmanifest; do
             echo "== $u"; curl -sS -m 20 -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s · IP %{remote_ip}\n' "$u" || echo "FALLO curl $?"; head -c 200 /tmp/b 2>/dev/null; echo
           done
+          echo "== version.txt cabeceras"; curl -sS -m 20 -D - -o /tmp/v "https://rutahz.pages.dev/version.txt?x=$RANDOM" | grep -iE "^(HTTP|cache-control|cf-cache-status|age|etag)"; cat /tmp/v
+          echo "== index VER"; curl -sS -m 20 "https://rutahz.pages.dev/?x=$RANDOM" | grep -o "const VER = '[^']*'"
+          echo "== sw V"; curl -sS -m 20 "https://rutahz.pages.dev/sw.js?x=$RANDOM" | grep -o "const V = '[^']*'"
+          echo "== index cabeceras"; curl -sS -m 20 -D - -o /dev/null "https://rutahz.pages.dev/" | grep -iE "^(cache-control|cf-cache-status)"
           echo "== DNS"; getent hosts rutahz.pages.dev || echo "sin DNS"
           echo "== SOA (caché de «no existe»)"; dig +noall +answer SOA pages.dev @1.1.1.1; dig +noall +answer A rutahz.pages.dev @1.1.1.1; dig +noall +answer A rutahz.pages.dev @8.8.8.8
           echo "== proxy con origen propio"; curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" || echo FALLO; head -c 200 /tmp/b; echo
