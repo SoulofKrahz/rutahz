@@ -712,7 +712,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-12';
+const VER = '2026-11-02-13';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1131,7 +1131,7 @@ $('#pickOk').onclick = () => {
   endPick();
   if (k === 'start') setStart(c.lat, c.lng, lb);
   else if (k === 'dest-new') newDestAt(c.lat, c.lng, lb);
-  else if (k === 'dest-move' && ref) { const o = { lat: ref.lat, lon: ref.lon }; ref.lat = c.lat; ref.lon = c.lng; ref.addr = lb; save(); renderDest(); setView('dest'); toast(`«${ref.label}» movido`, { undo: () => { ref.lat = o.lat; ref.lon = o.lon; save(); renderDest(); } }); }
+  else if (k === 'dest-move' && ref) moveDest(ref, c.lat, c.lng, lb);
   else addStop(c.lat, c.lng, lb);
 };
 
@@ -1335,11 +1335,66 @@ function destMenu(c) {
   sheet({ title: c.label, sub: v.n ? `${v.n} visita${v.n > 1 ? 's' : ''} · última el ${fmtDate(v.last, { day: 'numeric', month: 'long' })}` : (c.addr || 'Sin visitas guardadas'), items: [
     { icon: 'plus', label: 'Añadir a la ruta de hoy', fn: () => addStop(c.lat, c.lon, c.label, c.id) },
     { icon: 'eye', label: 'Ver en el mapa', fn: () => { setView('ruta'); if (isMob()) scrollTo({ top: 0 }); setTimeout(() => { map.invalidateSize(); map.setView([c.lat, c.lon], 16, { animate: !RM }); L.popup({ closeButton: false, offset: [0, -6] }).setLatLng([c.lat, c.lon]).setContent(esc(c.label)).openOn(map); }, 80); } },
-    { icon: 'edit', label: 'Cambiar nombre', fn: async () => { const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia también en la ruta de hoy. El historial guarda el nombre de cada día, pero las visitas se siguen contando juntas.' }); if (nv && nv.trim()) { c.label = nv.trim(); D.cur.stops.forEach(s => { if (s.cid === c.id) s.label = c.label; }); save(); renderDest(); renderRuta(); renderStats(); } } },
+    { icon: 'edit', label: 'Cambiar nombre', fn: () => renameDest(c) },
     { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
     v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
     { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia', danger: true, fn: () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); D.cur.stops.forEach(s => { if (s.cid === c.id) s.cid = null; }); save(); renderDest(); renderRuta(); toast(`«${c.label}» eliminado`, { undo: () => { D.clients.splice(i, 0, c); save(); renderDest(); renderRuta(); } }); } },
   ] });
+}
+/* ---- Cambios en un destino: qué se actualiza ----
+   · La ruta de hoy (y la jornada que estés editando) siempre: aún no es un registro cerrado.
+   · El historial solo si lo confirmas: esos km pueden estar ya en un informe enviado.
+   · Antes de cambiar nada, las visitas que se reconocían por estar en el mismo sitio quedan enlazadas al destino,
+     para que sigan contando aunque se mueva. */
+const isOf = (c, o) => s => s && (s.cid === c.id || (!s.cid && near(s, o)));
+function linkVisits(c, o) { const m = isOf(c, o); D.hist.forEach(j => j.stops.forEach(s => { if (m(s)) s.cid = c.id; })); }
+function openRoutes() { return [D.cur, D.edit && D.edit.prevCur].filter(Boolean); }
+function histWith(c, o) { const m = isOf(c, o); return D.hist.filter(j => j.stops.some(m) || near(j.start, o)); }
+async function renameDest(c) {
+  const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.' });
+  if (!nv || !nv.trim() || nv.trim() === c.label) return;
+  const old = c.label, o = { lat: c.lat, lon: c.lon }, m = isOf(c, o); linkVisits(c, o);
+  c.label = nv.trim(); openRoutes().forEach(r => r.stops.forEach(s => { if (m(s)) s.label = c.label; }));
+  save(); renderDest(); renderRuta(); renderStats();
+  const js = D.hist.filter(j => j.stops.some(s => s.cid === c.id && s.label !== c.label));
+  if (!js.length) return toast(`Ahora se llama «${c.label}»`);
+  const v = await dlg({ title: '¿Cambiar también el historial?', text: `En ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} aparece con otro nombre («${old}»). Si las cambias, los informes y el Excel saldrán con el nombre nuevo. Los km no cambian.`,
+    acts: [{ t: 'Dejar como están', cls: 'g', v: false }, { t: `Cambiar en ${js.length}`, v: true }] });
+  if (!v) return toast(`Ahora se llama «${c.label}». El historial no cambia.`);
+  const prev = []; js.forEach(j => j.stops.forEach(s => { if (s.cid === c.id) { prev.push([s, s.label]); s.label = c.label; } }));
+  save(); renderHist(); renderStats();
+  toast(`Nombre cambiado también en ${js.length} jornada${js.length > 1 ? 's' : ''}`, { undo: () => { prev.forEach(([s, l]) => s.label = l); save(); renderHist(); renderStats(); } });
+}
+async function moveDest(c, lat, lon, addr) {
+  const o = { lat: c.lat, lon: c.lon, addr: c.addr }, m = isOf(c, o); linkVisits(c, o);
+  const js = histWith(c, o);
+  c.lat = lat; c.lon = lon; c.addr = addr;
+  // ruta de hoy y jornada en edición; también el punto de partida habitual si era este sitio
+  let today = 0;
+  openRoutes().forEach(r => { r.stops.forEach(s => { if (m(s)) { s.lat = lat; s.lon = lon; s.cid = c.id; today++; } }); if (near(r.start, o)) { r.start.lat = lat; r.start.lon = lon; today++; } });
+  if (near(D.fav, o)) { D.fav.lat = lat; D.fav.lon = lon; }
+  save(); renderDest(); setView('dest'); if (today) { renderRuta(); recalc(); }
+  const msg = `«${c.label}» movido${today ? ', también en la ruta de hoy' : ''}`;
+  if (!js.length) return toast(msg);
+  const sumKm = js.reduce((a, j) => a + (j.tot.road || 0), 0);
+  const v = await dlg({ title: '¿Corregir también el historial?', text: `«${c.label}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} (${fmtKm(sumKm)} en total) con la ubicación anterior. Si las corriges, se recalculan sus km y tiempos por carretera${js.some(isReal) ? '; el tiempo real que anotaste no cambia' : ''}. Si ya enviaste el informe de esos días, sus km cambiarán.`
+      + (navigator.onLine ? '' : '\n\nAhora no tienes conexión: elige «Solo desde ahora» y repite «Corregir la ubicación» con cobertura (en el mismo sitio vale).'),
+    acts: [{ t: 'Solo desde ahora', cls: 'g', v: false }, { t: `Corregir ${js.length}`, v: true }] });
+  if (!v || !navigator.onLine) return toast(msg + '. El historial no cambia.');
+  if (recalcBusy) return toast('Ya hay un recálculo en marcha. Prueba en un momento.');
+  recalcBusy = true; const snaps = [], fail = []; let before = 0, after = 0;
+  for (let i = 0; i < js.length; i++) {
+    const j = js[i], snap = JSON.parse(JSON.stringify(j)); toast(`Corrigiendo ${i + 1} de ${js.length}…`, { ms: 20000 });
+    j.stops.forEach(s => { if (s.cid === c.id) { s.lat = lat; s.lon = lon; } }); if (near(j.start, o)) { j.start.lat = lat; j.start.lon = lon; }
+    const r = await computeRoute(pointsOf(j));
+    if (r.src === 'road') { before += snap.tot.road || 0; applyRoute(j, r); after += j.tot.road; snaps.push([j, snap]); }
+    else { Object.keys(j).forEach(k => delete j[k]); Object.assign(j, snap); fail.push(j); }
+    if (i < js.length - 1) await sleep(1100);
+  }
+  recalcBusy = false; save(); renderHist(); renderStats(); renderChip(); renderDest();
+  const undo = () => { snaps.forEach(([j, sn]) => { Object.keys(j).forEach(k => delete j[k]); Object.assign(j, sn); }); save(); renderHist(); renderStats(); renderChip(); };
+  if (!snaps.length) return toast('No se ha podido recalcular ahora. El historial no ha cambiado: repite «Corregir la ubicación» más tarde.', { ms: 6000 });
+  toast(`${snaps.length} jornada${snaps.length > 1 ? 's' : ''} corregida${snaps.length > 1 ? 's' : ''}: ${fmtKm(before)} → ${fmtKm(after)}` + (fail.length ? `. ${fail.length} sin conexión, sin cambios.` : ''), { ms: 7000, undo });
 }
 function destVisits(c) {
   const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
@@ -1653,13 +1708,19 @@ function renderHist() {
 }
 $('#hq').addEventListener('input', renderHist);
 let recalcBusy = false;
+// Pone en una jornada guardada los km y tiempos de una ruta recién calculada, con su €/km y sus ajustes de tiempo
+function applyRoute(j, r) {
+  const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk), tf = j.tot.tf ?? D.set.tf, pm = j.tot.pm ?? D.set.pm;
+  j.legs = r.legs; j.legsDur = r.legsDur;
+  j.tot = { ...j.tot, road: r.km, durRaw: r.durRaw, tf, pm, dur: adjDur(r.durRaw, r.legs.length, tf, pm), src: 'road', straight: r.straight, cpk, cost: r.km * cpk };
+}
 async function recalcEntries(list) {
   if (recalcBusy) return; if (!navigator.onLine) return toast('Necesitas conexión para recalcular.');
   recalcBusy = true; let ok = 0;
   for (let i = 0; i < list.length; i++) {
     const j = list[i]; toast(`Recalculando ${i + 1} de ${list.length}…`, { ms: 20000 });
     const r = await computeRoute(pointsOf(j));
-    if (r.src === 'road') { const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk), tf = j.tot.tf ?? D.set.tf, pm = j.tot.pm ?? D.set.pm; j.legs = r.legs; j.legsDur = r.legsDur; j.tot = { ...j.tot, road: r.km, durRaw: r.durRaw, tf, pm, dur: adjDur(r.durRaw, r.legs.length, tf, pm), src: 'road', straight: r.straight, cpk, cost: r.km * cpk }; ok++; }
+    if (r.src === 'road') { applyRoute(j, r); ok++; }
     if (i < list.length - 1) await sleep(1100); // el servidor público de rutas pide como mucho 1 petición por segundo
   }
   recalcBusy = false; save(); renderHist(); renderStats(); renderChip();
@@ -2130,6 +2191,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-13', d: '2026-11-02', t: 'Corregir un destino, de verdad', i: [
+    'Al <b>corregir la ubicación</b> de un destino se corrige también en la ruta de hoy, y te pregunta si quieres corregir las jornadas guardadas: recalcula sus km y te dice cuánto cambian, con opción de deshacer.',
+    'Al <b>cambiar el nombre</b>, te pregunta si cambiarlo también en el historial.',
+    'Las visitas a un destino siguen contando aunque lo muevas.'] },
   { v: '2026-11-02-12', d: '2026-11-02', t: 'Búsqueda que encuentra más', i: [
     'Las direcciones de los pueblos (Llucmajor, Inca, Manacor…) ya se encuentran escritas tal cual, igual que salen al tocar el mapa.',
     'Si un número de portal no está en el mapa, busca la calle.',
@@ -2315,7 +2380,7 @@ else if (hasPin()) showLock('unlock', 'boot'); else showLock('create', 'boot');
 persistStorage();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) navigator.serviceWorker.register('sw.js').catch(() => {});
 checkUpdate(false); // enseguida: si hay versión nueva, el aviso sale ya en la pantalla del PIN
-window.__rz = { D, get R() { return R; }, importBackup, setView };
+window.__rz = { D, get R() { return R; }, importBackup, setView, map };
 })();
 </script>
 </body>

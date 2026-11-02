@@ -150,13 +150,19 @@ function renderHist() {
 }
 $('#hq').addEventListener('input', renderHist);
 let recalcBusy = false;
+// Pone en una jornada guardada los km y tiempos de una ruta recién calculada, con su €/km y sus ajustes de tiempo
+function applyRoute(j, r) {
+  const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk), tf = j.tot.tf ?? D.set.tf, pm = j.tot.pm ?? D.set.pm;
+  j.legs = r.legs; j.legsDur = r.legsDur;
+  j.tot = { ...j.tot, road: r.km, durRaw: r.durRaw, tf, pm, dur: adjDur(r.durRaw, r.legs.length, tf, pm), src: 'road', straight: r.straight, cpk, cost: r.km * cpk };
+}
 async function recalcEntries(list) {
   if (recalcBusy) return; if (!navigator.onLine) return toast('Necesitas conexión para recalcular.');
   recalcBusy = true; let ok = 0;
   for (let i = 0; i < list.length; i++) {
     const j = list[i]; toast(`Recalculando ${i + 1} de ${list.length}…`, { ms: 20000 });
     const r = await computeRoute(pointsOf(j));
-    if (r.src === 'road') { const cpk = j.tot.cpk ?? (j.tot.road ? j.tot.cost / j.tot.road : D.set.cpk), tf = j.tot.tf ?? D.set.tf, pm = j.tot.pm ?? D.set.pm; j.legs = r.legs; j.legsDur = r.legsDur; j.tot = { ...j.tot, road: r.km, durRaw: r.durRaw, tf, pm, dur: adjDur(r.durRaw, r.legs.length, tf, pm), src: 'road', straight: r.straight, cpk, cost: r.km * cpk }; ok++; }
+    if (r.src === 'road') { applyRoute(j, r); ok++; }
     if (i < list.length - 1) await sleep(1100); // el servidor público de rutas pide como mucho 1 petición por segundo
   }
   recalcBusy = false; save(); renderHist(); renderStats(); renderChip();

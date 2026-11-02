@@ -199,6 +199,48 @@ test('ajuste de vuelta', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6e · Corregir un destino: ruta de hoy siempre, historial si se confirma (con km recalculados y deshacer), visitas que no se pierden */
+test('corregir un destino', async ({ browser, base }) => {
+  const A = P(39.7217, 2.9106, 'Casa de M.', 'c1'), NEW = { lat: 39.7300, lon: 2.9200 };
+  const d = data({
+    clients: [{ id: 'c1', ...A }],
+    hist: [day('h1', '2026-10-28', [{ ...A }]), day('h2', '2026-10-29', [{ ...A, cid: null, lat: A.lat + 0.0001 }]), day('h3', '2026-10-30', [P(39.5694, 3.2085, 'Otro sitio')])],
+    cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 's1', ...A }], notes: '', ret: true } });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) }, leg: (a, b) => ({ distance: L.hav(a, b) * 1000, duration: 600 }) }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(500);
+  const km0 = await p.evaluate(() => __rz.D.hist.map(j => j.tot.road));
+  const move = async (answer) => {
+    await p.click('.bb button[data-v="dest"]'); await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Corregir la ubicación")');
+    await p.waitForTimeout(400); await p.evaluate(n => __rz.map.setView([n.lat, n.lon], 17, { animate: false }), NEW); await p.waitForTimeout(500);
+    await p.click('#pickOk'); await p.waitForSelector('.dlg h3:has-text("historial")', { timeout: 5000 });
+    if (process.env.SHOT) { await p.waitForTimeout(600); await p.screenshot({ path: process.env.SHOT }); }
+    ok((await p.textContent('.dlg')).includes('2 jornadas'), 'pregunta por las 2 jornadas donde aparece (una enlazada y otra por estar en el mismo sitio)');
+    await p.click(`.dlg .acts button:has-text("${answer}")`);
+  };
+  await move('Solo desde ahora'); await p.waitForTimeout(600);
+  let st = await p.evaluate(() => ({ c: __rz.D.clients[0], cur: __rz.D.cur.stops[0], h: __rz.D.hist.map(j => ({ lat: j.stops[0].lat, cid: j.stops[0].cid, km: j.tot.road })) }));
+  ok(Math.abs(st.c.lat - NEW.lat) < 1e-4 && Math.abs(st.cur.lat - NEW.lat) < 1e-4, 'el destino y la ruta de hoy pasan a la ubicación nueva');
+  ok(Math.abs(st.h[0].lat - A.lat) < 1e-3 && st.h[0].km === km0[0], '«Solo desde ahora» deja el historial como estaba');
+  ok(st.h[1].cid === 'c1', 'la visita reconocida por el sitio queda enlazada al destino');
+  await p.click('.dr:has-text("Casa de M.") .bd'); await p.waitForSelector('.am');
+  ok((await p.textContent('.am')).includes('2 visitas'), 'sigue contando 2 visitas después de moverlo');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  await move('Corregir 2'); await p.waitForFunction(() => /corregida/.test(document.querySelector('#toast').textContent), null, { timeout: 10000 }).catch(() => {});
+  st = await p.evaluate(() => __rz.D.hist.map(j => ({ lat: j.stops[0].lat, km: j.tot.road })));
+  ok(Math.abs(st[0].lat - NEW.lat) < 1e-4 && Math.abs(st[1].lat - NEW.lat) < 1e-4 && st[0].km !== km0[0], `«Corregir» mueve las 2 jornadas y recalcula sus km (${km0[0]} → ${st[0].km.toFixed(1)})`);
+  ok(st[2].km === km0[2], 'no toca las jornadas de otros sitios');
+  ok(/→/.test(await p.textContent('#toast')), 'avisa de cuántos km cambian → ' + await p.textContent('#toast'));
+  await p.click('#toast button'); await p.waitForTimeout(300);
+  st = await p.evaluate(() => __rz.D.hist.map(j => ({ lat: j.stops[0].lat, km: j.tot.road })));
+  ok(Math.abs(st[0].lat - A.lat) < 1e-3 && st[0].km === km0[0], 'Deshacer devuelve el historial como estaba');
+  // nombre
+  await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Cambiar nombre")'); await p.fill('#pv', 'Casa de María'); await p.click('.dlg .acts button:has-text("Guardar")');
+  await p.waitForSelector('.dlg h3:has-text("historial")'); await p.click('.dlg .acts button:has-text("Cambiar en 2")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.hist.filter(j => j.stops[0].label === 'Casa de María').length === 2 && __rz.D.cur.stops[0].label === 'Casa de María'), 'el nombre nuevo pasa a la ruta de hoy y, si se confirma, al historial');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

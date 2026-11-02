@@ -2,7 +2,7 @@
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-12';
+const VER = '2026-11-02-13';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];

@@ -258,6 +258,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-13', d: '2026-11-02', t: 'Corregir un destino, de verdad', i: [
+    'Al <b>corregir la ubicación</b> de un destino se corrige también en la ruta de hoy, y te pregunta si quieres corregir las jornadas guardadas: recalcula sus km y te dice cuánto cambian, con opción de deshacer.',
+    'Al <b>cambiar el nombre</b>, te pregunta si cambiarlo también en el historial.',
+    'Las visitas a un destino siguen contando aunque lo muevas.'] },
   { v: '2026-11-02-12', d: '2026-11-02', t: 'Búsqueda que encuentra más', i: [
     'Las direcciones de los pueblos (Llucmajor, Inca, Manacor…) ya se encuentran escritas tal cual, igual que salen al tocar el mapa.',
     'Si un número de portal no está en el mapa, busca la calle.',
@@ -443,7 +447,7 @@ else if (hasPin()) showLock('unlock', 'boot'); else showLock('create', 'boot');
 persistStorage();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) navigator.serviceWorker.register('sw.js').catch(() => {});
 checkUpdate(false); // enseguida: si hay versión nueva, el aviso sale ya en la pantalla del PIN
-window.__rz = { D, get R() { return R; }, importBackup, setView };
+window.__rz = { D, get R() { return R; }, importBackup, setView, map };
 })();
 </script>
 </body>
