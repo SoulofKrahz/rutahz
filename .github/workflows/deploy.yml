@@ -27,7 +27,7 @@ jobs:
     name: Publicar
     needs: test
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
       deployments: write
@@ -40,3 +40,23 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy site --project-name=${{ vars.CF_PROJECT }} --branch=main --commit-dirty=true
+      # Cloudflare a veces da la publicación por buena pero no la pone como principal: se comprueba y se repite una vez
+      - name: Comprobar que la web sirve la versión nueva
+        id: v1
+        continue-on-error: true
+        run: |
+          want=$(cat site/version.txt); url="https://${{ vars.CF_PROJECT }}.pages.dev/version.txt"
+          for i in $(seq 1 12); do got=$(curl -sS -m 15 "$url?x=$RANDOM" | tr -d '[:space:]'); echo "intento $i: $got (esperada $want)"; [ "$got" = "$want" ] && exit 0; sleep 10; done; exit 1
+      - name: Publicar otra vez
+        if: steps.v1.outcome == 'failure'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ vars.CF_PROJECT }} --branch=main --commit-dirty=true
+      - name: Comprobar otra vez
+        if: steps.v1.outcome == 'failure'
+        run: |
+          want=$(cat site/version.txt); url="https://${{ vars.CF_PROJECT }}.pages.dev/version.txt"
+          for i in $(seq 1 12); do got=$(curl -sS -m 15 "$url?x=$RANDOM" | tr -d '[:space:]'); echo "intento $i: $got (esperada $want)"; [ "$got" = "$want" ] && exit 0; sleep 10; done
+          echo "::error::La web sigue sin servir la versión $want: revisa Cloudflare › rutahz › Deployments"; exit 1
