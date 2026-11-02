@@ -24,9 +24,11 @@ for (const [lat, lon] of pts) {
     'sin número, acotado': [[a.road || a.pedestrian, L.town].filter(Boolean).join(', '), true],
     'número delante (50 Carrer…), acotado': [[a.house_number && (a.house_number + ' ' + (a.road || '')), L.town].filter(Boolean).join(', '), true],
   };
-  for (const [k, [q, bd]] of Object.entries(vars)) {
+  vars['app nueva (tal cual y, si no hay, sin número)'] = [L.label, true, true];
+  for (const [k, [q, bd, fb]] of Object.entries(vars)) {
     if (!q) continue;
-    const r = await search(q, bd); const d = r[0] ? hav([lat, lon], [+r[0].lat, +r[0].lon]) : null;
+    let r = await search(q, bd);
+    if (fb && !r.length) { const alt = q.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').trim(); if (alt !== q) r = await search(alt, bd); } const d = r[0] ? hav([lat, lon], [+r[0].lat, +r[0].lon]) : null;
     const ok = d != null && d < 0.4; (tally[k] = tally[k] || [0, 0]); tally[k][1]++; if (ok) tally[k][0]++;
     console.log(`  ${ok ? 'OK ' : (r.length ? 'LEJOS' : 'NADA')} ${k}: «${q}» → ${r.length} res.${r[0] ? ` 1º a ${d.toFixed(2)} km: ${r[0].display_name.slice(0, 80)}` : ''}`);
   }

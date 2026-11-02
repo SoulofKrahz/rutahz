@@ -2,7 +2,7 @@
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-11';
+const VER = '2026-11-02-12';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -145,10 +145,19 @@ async function api(path, direct) {
   return r.json();
 }
 const B = { latMin: 39.20, latMax: 40.05, lonMin: 2.25, lonMax: 3.53 };
-function geoSearch(q, limit) {
-  const p = new URLSearchParams({ q: D.set.unl ? q : q + ', Mallorca', limit: String(limit), addressdetails: '1' });
+// La búsqueda ya está limitada a la isla con el recuadro; no se añade «Mallorca» al texto porque fuera de Palma
+// no forma parte de la dirección y Nominatim no encontraba nada (Llucmajor, Inca, Manacor…).
+function geoSearch1(q, limit) {
+  const p = new URLSearchParams({ q, limit: String(limit), addressdetails: '1' });
   if (!D.set.unl) { p.set('countrycodes', 'es'); p.set('viewbox', `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`); p.set('bounded', '1'); }
   return api('/g/search?' + p, 'https://nominatim.openstreetmap.org/search?format=jsonv2&' + p);
+}
+async function geoSearch(q, limit) {
+  q = q.replace(/\s+/g, ' ').trim();
+  const r = await geoSearch1(q, limit); if (r.length) return r;
+  // Sin resultados: se prueba sin el número de portal (muchos no están en el mapa) y sin «Mallorca» si lo ha escrito la persona
+  const alt = q.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').replace(/,\s*(mallorca|illes balears|islas baleares|baleares|espa[ñn]a)\s*$/gi, '').replace(/\s*,\s*,/g, ',').trim().replace(/^,|,$/g, '').trim();
+  return alt && alt !== q ? geoSearch1(alt, limit) : r;
 }
 function geoReverse(lat, lon) {
   const p = new URLSearchParams({ lat: lat.toFixed(6), lon: lon.toFixed(6), zoom: '18', addressdetails: '1' });

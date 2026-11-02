@@ -169,6 +169,36 @@ test('actualización con service worker', async ({ browser, base, st }) => {
   } finally { st.pageVer = null; st.version = null; }
 });
 
+/* 6c · Búsqueda: la dirección tal cual sale del mapa, sin «Mallorca»; si no hay resultado, prueba sin número */
+test('búsqueda de direcciones', async ({ browser, base }) => {
+  const hit = { lat: '39.4897', lon: '2.8917', name: '', display_name: 'Carrer dels Bons Aires, Llucmajor', address: { road: 'Carrer dels Bons Aires', town: 'Llucmajor' } };
+  // Como Nominatim: con «Mallorca» o con un número que no tiene, no encuentra nada
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: data(), rz_meta: meta(VER) }, geo: q => /mallorca|\d/i.test(q) ? [] : /bons aires/i.test(q) ? [hit] : [] }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true });
+  await p.fill('#stopQ', 'Carrer dels Bons Aires, 24, Llucmajor'); await p.waitForSelector('#stopSug button:has-text("Bons Aires")', { timeout: 5000 }).catch(() => {});
+  ok(!ctx.geoQ.some(q => /mallorca/i.test(q)), 'no añade «Mallorca» a lo que se busca → ' + ctx.geoQ.join(' | '));
+  ok(ctx.geoQ.includes('Carrer dels Bons Aires, Llucmajor'), 'sin resultado con número, prueba la calle sin número');
+  ok(await p.locator('#stopSug button:has-text("Bons Aires")').count() > 0, 'y la encuentra');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
+/* 6d · Ajustes › Volver al punto de partida cambia también la ruta de hoy */
+test('ajuste de vuelta', async ({ browser, base }) => {
+  const d = data({ cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 'a', ...P(39.548, 2.693, 'Casa') }], notes: '', ret: true } });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(500);
+  const km0 = await p.textContent('#kmV');
+  await p.click('.bb button[data-v="ajustes"]'); await p.click('label.sw:has(#setRet)'); await p.waitForTimeout(500);
+  ok(await p.evaluate(() => __rz.D.set.ret === false && __rz.D.cur.ret === false), 'apagarlo quita la vuelta también de la ruta abierta');
+  await p.click('.bb button[data-v="ruta"]'); await p.waitForTimeout(500);
+  ok(!(await p.isChecked('#retSw')) && await p.textContent('#kmV') !== km0, `la ruta se recalcula sin vuelta: ${km0} → ${await p.textContent('#kmV')} km`);
+  await p.click('#bSave'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.cur.ret === false), 'la jornada siguiente también empieza sin vuelta');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

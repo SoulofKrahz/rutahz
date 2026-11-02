@@ -621,7 +621,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <div id="s-gen" class="sp">
         <section class="card set"><h2>Cálculo</h2><p>Con conexión, los km y el tiempo salen de las carreteras reales.</p>
           <div class="row"><div><b>Coste por km</b><small>En euros. Cada jornada guarda el valor del día en que se guardó.</small></div><input class="inp" id="setCpk" type="number" inputmode="decimal" step="0.01" min="0" aria-label="Coste por kilómetro"></div>
-          <div class="row"><div><b>Volver al punto de partida</b><small>Valor por defecto para cada jornada nueva.</small></div><label class="sw"><input type="checkbox" id="setRet" aria-label="Volver al punto de partida por defecto"><span></span></label></div>
+          <div class="row"><div><b>Volver al punto de partida</b><small>Para la ruta de hoy y las siguientes. En cada ruta lo puedes cambiar con «Volver a…».</small></div><label class="sw"><input type="checkbox" id="setRet" aria-label="Volver al punto de partida por defecto"><span></span></label></div>
           <div class="row"><div><b>Ajuste sin conexión</b><small>Sin cobertura se mide en línea recta y se multiplica por este número. La jornada queda como «estimada» y se puede recalcular después.</small></div><input class="inp" id="setRf" type="number" inputmode="decimal" step="0.05" min="1" max="3" aria-label="Ajuste sin conexión"></div>
         </section>
         <section class="card set"><h2>Tiempo al volante</h2><p>El servicio de rutas calcula el tiempo a la velocidad de cada vía, sin tráfico ni aparcar, y suele quedarse corto. Rutahz lo ajusta así:</p>
@@ -712,7 +712,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-11';
+const VER = '2026-11-02-12';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -855,10 +855,19 @@ async function api(path, direct) {
   return r.json();
 }
 const B = { latMin: 39.20, latMax: 40.05, lonMin: 2.25, lonMax: 3.53 };
-function geoSearch(q, limit) {
-  const p = new URLSearchParams({ q: D.set.unl ? q : q + ', Mallorca', limit: String(limit), addressdetails: '1' });
+// La búsqueda ya está limitada a la isla con el recuadro; no se añade «Mallorca» al texto porque fuera de Palma
+// no forma parte de la dirección y Nominatim no encontraba nada (Llucmajor, Inca, Manacor…).
+function geoSearch1(q, limit) {
+  const p = new URLSearchParams({ q, limit: String(limit), addressdetails: '1' });
   if (!D.set.unl) { p.set('countrycodes', 'es'); p.set('viewbox', `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`); p.set('bounded', '1'); }
   return api('/g/search?' + p, 'https://nominatim.openstreetmap.org/search?format=jsonv2&' + p);
+}
+async function geoSearch(q, limit) {
+  q = q.replace(/\s+/g, ' ').trim();
+  const r = await geoSearch1(q, limit); if (r.length) return r;
+  // Sin resultados: se prueba sin el número de portal (muchos no están en el mapa) y sin «Mallorca» si lo ha escrito la persona
+  const alt = q.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').replace(/,\s*(mallorca|illes balears|islas baleares|baleares|espa[ñn]a)\s*$/gi, '').replace(/\s*,\s*,/g, ',').trim().replace(/^,|,$/g, '').trim();
+  return alt && alt !== q ? geoSearch1(alt, limit) : r;
 }
 function geoReverse(lat, lon) {
   const p = new URLSearchParams({ lat: lat.toFixed(6), lon: lon.toFixed(6), zoom: '18', addressdetails: '1' });
@@ -1897,7 +1906,7 @@ $('#bTfAll').onclick = async () => {
   save(); renderHist(); renderStats(); renderCalNote();
   toast(`${L.length} jornada${L.length > 1 ? 's' : ''} actualizada${L.length > 1 ? 's' : ''}`, { undo: () => { snap.forEach(([j, t]) => { j.tot = t; }); save(); renderHist(); renderStats(); renderCalNote(); }, ms: 7000 });
 };
-$('#setRet').onchange = e => { D.set.ret = e.target.checked; save(); };
+$('#setRet').onchange = e => { D.set.ret = e.target.checked; if (!D.edit && D.cur.ret !== D.set.ret) { D.cur.ret = D.set.ret; renderRuta(); recalc(); toast(D.set.ret ? 'Vuelta activada, también en la ruta de hoy.' : 'Sin vuelta, también en la ruta de hoy.'); } save(); };
 $('#setUnl').onchange = e => { D.set.unl = e.target.checked; save(); applyScope(); toast(D.set.unl ? 'Mapa y búsqueda sin límites' : 'Mapa y búsqueda limitados a Mallorca'); };
 ['ShN', 'ShM', 'ShT'].forEach(k => $('#set' + k).onchange = e => { D.set['s' + k.slice(1, 2).toLowerCase() + k.slice(2)] = e.target.checked; save(); });
 $$('#sgAl button').forEach(b => b.onclick = () => { D.set.al = +b.dataset.v; save(); syncSettings(); });
@@ -2121,6 +2130,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-12', d: '2026-11-02', t: 'Búsqueda que encuentra más', i: [
+    'Las direcciones de los pueblos (Llucmajor, Inca, Manacor…) ya se encuentran escritas tal cual, igual que salen al tocar el mapa.',
+    'Si un número de portal no está en el mapa, busca la calle.',
+    '<b>Ajustes › Volver al punto de partida</b> ahora cambia también la ruta de hoy, no solo las siguientes.'] },
   { v: '2026-11-02-11', d: '2026-11-02', t: 'Actualizar funciona a la primera', i: [
     'Arreglado: en algunos móviles el aviso de versión nueva volvía a salir después de actualizar.'] },
   { v: '2026-11-02-10', d: '2026-11-02', t: 'Más fácil de tocar', i: [

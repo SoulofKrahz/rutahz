@@ -34,7 +34,7 @@ $('#bTfAll').onclick = async () => {
   save(); renderHist(); renderStats(); renderCalNote();
   toast(`${L.length} jornada${L.length > 1 ? 's' : ''} actualizada${L.length > 1 ? 's' : ''}`, { undo: () => { snap.forEach(([j, t]) => { j.tot = t; }); save(); renderHist(); renderStats(); renderCalNote(); }, ms: 7000 });
 };
-$('#setRet').onchange = e => { D.set.ret = e.target.checked; save(); };
+$('#setRet').onchange = e => { D.set.ret = e.target.checked; if (!D.edit && D.cur.ret !== D.set.ret) { D.cur.ret = D.set.ret; renderRuta(); recalc(); toast(D.set.ret ? 'Vuelta activada, también en la ruta de hoy.' : 'Sin vuelta, también en la ruta de hoy.'); } save(); };
 $('#setUnl').onchange = e => { D.set.unl = e.target.checked; save(); applyScope(); toast(D.set.unl ? 'Mapa y búsqueda sin límites' : 'Mapa y búsqueda limitados a Mallorca'); };
 ['ShN', 'ShM', 'ShT'].forEach(k => $('#set' + k).onchange = e => { D.set['s' + k.slice(1, 2).toLowerCase() + k.slice(2)] = e.target.checked; save(); });
 $$('#sgAl button').forEach(b => b.onclick = () => { D.set.al = +b.dataset.v; save(); syncSettings(); });
@@ -258,6 +258,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-12', d: '2026-11-02', t: 'Búsqueda que encuentra más', i: [
+    'Las direcciones de los pueblos (Llucmajor, Inca, Manacor…) ya se encuentran escritas tal cual, igual que salen al tocar el mapa.',
+    'Si un número de portal no está en el mapa, busca la calle.',
+    '<b>Ajustes › Volver al punto de partida</b> ahora cambia también la ruta de hoy, no solo las siguientes.'] },
   { v: '2026-11-02-11', d: '2026-11-02', t: 'Actualizar funciona a la primera', i: [
     'Arreglado: en algunos móviles el aviso de versión nueva volvía a salir después de actualizar.'] },
   { v: '2026-11-02-10', d: '2026-11-02', t: 'Más fácil de tocar', i: [

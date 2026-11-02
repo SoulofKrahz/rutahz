@@ -55,7 +55,8 @@ async function context(browser, base, o = {}) {
   await ctx.route(base + 'g/**', r => {
     const u = new URL(r.request().url());
     if (u.pathname === '/g/reverse') return json(r, { display_name: 'Carrer Major, Sóller', address: { road: 'Carrer Major', town: 'Sóller' } });
-    json(r, o.geo || []);
+    (ctx.geoQ = ctx.geoQ || []).push(u.searchParams.get('q'));
+    json(r, typeof o.geo === 'function' ? o.geo(u.searchParams.get('q'), u) : (o.geo || []));
   });
   if (o.seed) await ctx.addInitScript(s => {
     try { if (!sessionStorage.getItem('rzSeed')) { for (const k of Object.keys(s)) localStorage.setItem(k, JSON.stringify(s[k])); sessionStorage.setItem('rzSeed', '1'); } } catch (e) {}
