@@ -196,7 +196,7 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .sumk .u{font-size:.9375rem;font-weight:600;color:var(--mu)}
 .sumk .src{margin-left:auto}
 .sumg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)}
-.sumg div b{display:block;font:650 1.0625rem/1.2 Inter,sans-serif;letter-spacing:-.01em}.sumg div span{font-size:.6875rem;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+.sumg div b,.sumg .durb b{display:block;font:650 1.0625rem/1.2 Inter,sans-serif;letter-spacing:-.01em}.sumg div span,.sumg .durb span{font-size:.6875rem;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
 .ld{animation:pulse 1s ease-in-out infinite}@keyframes pulse{50%{opacity:.35}}
 .ebar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--wnt);color:var(--tx);font-size:.8125rem}
 .ebar svg{color:var(--wn)}.ebar div{flex:1;min-width:0}.ebar b{display:block}
@@ -228,6 +228,9 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .clh h3{font:600 .6875rem Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mu)}
 .clh button{font-size:.75rem;font-weight:600;color:var(--em);padding:6px 4px}
 .selb{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--tint);font-size:.8125rem}
+.durb{text-align:left;padding:0;color:inherit}.durb span{display:inline-flex;align-items:center;gap:4px}.durb span svg{width:12px;height:12px;color:var(--em)}
+.retn{margin-top:10px;font-size:.8125rem;color:var(--mu)}.retn b{color:var(--tx);font-weight:600}
+.legt{width:100%;border-collapse:collapse;font-size:.8125rem}.legt td{padding:7px 0;border-top:1px solid var(--bd);vertical-align:top}.legt tr:first-child td{border-top:0}.legt td.n{text-align:right;white-space:nowrap;padding-left:8px}.legt small{display:block;color:var(--mu);font-size:.6875rem}.legt tfoot td{font-weight:700;border-top:1.5px solid var(--tx)}
 .sumact{margin-top:14px}.sumact .btn{min-height:50px;font-size:.9375rem}
 .endsave .btn{min-height:52px;font-size:.9375rem}
 .rowsw{cursor:pointer}.rowsw:active{opacity:.85}
@@ -249,7 +252,7 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 @media(max-width:900px){
  .mapw{height:clamp(200px,36dvh,380px);min-height:0}
  .bar{padding-left:max(14px,env(safe-area-inset-left))}
- .sum{padding:16px}.sumk .v{font-size:2.375rem}.sumg{gap:6px}.sumg div b{font-size:1rem}
+ .sum{padding:16px}.sumk .v{font-size:2.375rem}.sumg{gap:6px}.sumg div b,.sumg .durb b{font-size:1rem}
  .card{padding:14px}.view{gap:12px}
  .tabs{display:none}
 }

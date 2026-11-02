@@ -404,7 +404,21 @@ function renderSum() {
   $('#nV').textContent = D.cur.stops.length;
   $('#srcB').innerHTML = !has ? '' : routing ? `<span class="chip m">Calculando…</span>` : R.src === 'road' ? `<span class="chip">${ic('ck')}Por carretera</span>` : `<span class="chip w">${ic('off')}Estimada</span>`;
   const bbN = $('#bbN'); bbN.hidden = !D.cur.stops.length; bbN.textContent = D.cur.stops.length;
+  // La vuelta se ve aparte: es la causa habitual de «me sale el doble»
+  const rn = $('#retN'), ri = D.cur.stops.length, rk = R.legs && R.legs[ri], rd = R.legsDur && R.legsDur[ri];
+  rn.hidden = !(has && D.cur.ret && rk != null && !routing);
+  if (!rn.hidden) rn.innerHTML = `Incluye la vuelta a ${esc(D.cur.start.label)}: <b>${nf1.format(rk)} km · ${fmtDur(rd * D.set.tf + D.set.pm)}</b>`;
 }
+function legNames(c) { const n = c.stops.map((s, i) => s.label || `Parada ${i + 1}`); if (c.ret && c.start) n.push('Vuelta a ' + c.start.label); return n; }
+$('#durB').onclick = () => {
+  if (pointsOf(D.cur).length < 2 || routing) return;
+  const names = legNames(D.cur), prev = [D.cur.start.label, ...D.cur.stops.map((s, i) => s.label || `Parada ${i + 1}`)];
+  const rows = names.map((n, i) => { const raw = R.legsDur[i] || 0; return `<tr><td>${esc(prev[i])} → ${esc(n.replace(/^Vuelta a /, ''))}${i === D.cur.stops.length ? ' <small>vuelta</small>' : ''}<small>${nf1.format(R.legs[i] || 0)} km · rutas ${fmtDur(raw)}</small></td><td class="n">${fmtDur(raw * D.set.tf + D.set.pm)}</td></tr>`; }).join('');
+  dlg({ title: 'Tiempo al volante', acts: [{ t: 'Ajustes', cls: 'g', v: 'set' }, { t: 'Entendido', v: null }],
+    html: `<table class="legt"><tbody>${rows}</tbody><tfoot><tr><td>Total${D.cur.ret ? ' (con vuelta)' : ''}</td><td class="n">${fmtDur(R.dur)}</td></tr></tfoot></table>
+      <p class="hint">Cada tramo: tiempo del servicio de rutas × ${fmtX(D.set.tf)} de tráfico + ${D.set.pm} min para aparcar.${R.src !== 'road' ? ' Sin conexión: tiempo supuesto a 45 km/h.' : ''}${D.cur.ret ? ' Si no vas a volver, apaga «Volver a…».' : ''}</p>` })
+    .then(v => { if (v === 'set') { setView('ajustes'); setTimeout(() => $('#setTf').scrollIntoView({ block: 'center' }), 80); } });
+};
 function renderLegs() {
   const legs = R.legs || [];
   $$('#stopsList [data-seg]').forEach(el => {

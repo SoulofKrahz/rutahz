@@ -98,10 +98,11 @@
       <div class="card sum">
         <div class="sumk"><span class="v" id="kmV">0,0</span><span class="u">km</span><span class="src" id="srcB"></span></div>
         <div class="sumg">
-          <div><b id="durV">—</b><span>Al volante</span></div>
+          <button class="durb" id="durB" aria-label="Ver el desglose del tiempo al volante"><b id="durV">—</b><span>Al volante <svg class="i"><use href="#i-info"/></svg></span></button>
           <div><b id="costV">0,00 €</b><span>Coste est.</span></div>
           <div><b id="nV">0</b><span>Paradas</span></div>
         </div>
+        <p class="retn" id="retN" hidden></p>
         <label class="row rowsw" style="margin-top:10px">
           <div><b id="retT">Volver al punto de partida</b><small id="retS">Suma el regreso tras la última visita</small></div>
           <span class="sw"><input type="checkbox" id="retSw" aria-label="Volver al punto de partida al terminar"><span></span></span>
