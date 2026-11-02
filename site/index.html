@@ -93,8 +93,8 @@ body.busy .lp path{stroke-dasharray:46 46;animation:pz 1.1s linear infinite}@key
 #map{position:absolute;inset:0}
 .pane{min-height:0;overflow-y:auto;overscroll-behavior:contain;background:var(--bg);border-left:1px solid var(--bd)}
 .tabs{position:sticky;top:0;z-index:5;display:flex;gap:2px;background:color-mix(in srgb,var(--bg) 92%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid color-mix(in srgb,var(--bd) 70%,transparent);padding:0 12px}
-.tab{display:flex;align-items:center;gap:7px;padding:14px 11px;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--mu);white-space:nowrap;font-weight:600;font-size:.875rem;letter-spacing:-.01em}
-.tab svg{width:16px;height:16px}.tab:hover{color:var(--tx)}.tab.on{color:var(--tx);border-color:var(--em2)}
+.tabs{padding:0 6px}.tab{flex:1;justify-content:center;display:flex;align-items:center;gap:5px;padding:14px 4px;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--mu);white-space:nowrap;font-weight:600;font-size:.875rem;letter-spacing:-.01em}
+.tab svg{width:15px;height:15px}.tab:hover{color:var(--tx)}.tab.on{color:var(--tx);border-color:var(--em2)}
 .view{padding:16px 16px 28px;display:flex;flex-direction:column;gap:14px}
 .vh{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:2px 2px 0}
 .vh h1{font:600 1.625rem/1.1 Newsreader,Georgia,serif;letter-spacing:-.015em}.vh p{font-size:.8125rem;color:var(--mu);margin-top:3px}
@@ -102,7 +102,7 @@ body.busy .lp path{stroke-dasharray:46 46;animation:pz 1.1s linear infinite}@key
 @media(max-width:900px){
  .app{display:block;height:auto}
  .mapw{height:42dvh;min-height:260px}
- body:not(.v-ruta) .mapw{display:none}
+ body:not(.v-ruta):not(.v-ver) .mapw{display:none}
  .pane{overflow:visible;border-left:0}
  .tabs{display:none}
  body{padding-bottom:calc(var(--bbh) + env(safe-area-inset-bottom))}
@@ -299,6 +299,14 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]),
 .chgl h4 small.cur{color:var(--em);white-space:normal}.chgl .cht{font-size:.8125rem;font-weight:600;color:var(--mu);margin:-2px 0 6px}
 .chgl ul{margin:0;padding-left:18px;font-size:.875rem;line-height:1.45}.chgl li{margin:3px 0}.chgl li b{font-weight:650}
 
+/* ===== Ver jornada ===== */
+.vrh{align-items:flex-start;justify-content:flex-start;gap:6px}.vrh>div{min-width:0}.vrh h1{font-size:1.5rem;line-height:1.15;text-wrap:balance}.vrh .gb{margin:-4px 0 0 -10px}
+#verReal{display:inline-flex;align-items:center;gap:6px}#verReal svg{width:15px;height:15px}
+button.pt.vr{width:100%;text-align:left;border-radius:12px;padding:8px 6px;margin:0 -6px;width:calc(100% + 12px)}
+.pt.vr .tx b{white-space:normal}.pt.vr:active,.pt.vr.on{background:var(--tint)}
+.vracts{display:flex;gap:8px;flex-wrap:wrap}.vracts .btn{flex:1 1 30%}
+body.v-ver .mtools #mFit{display:grid}
+
 /* ===== Historial ===== */
 .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 .75rem Inter,sans-serif;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;padding:10px 4px 0}
 .gh span{text-transform:none;letter-spacing:0;font-weight:500}
@@ -462,6 +470,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <symbol id="i-dest" viewBox="0 0 24 24"><path d="M12 21.5s-7-6.1-7-11.6a7 7 0 0 1 14 0c0 5.5-7 11.6-7 11.6z"/><path d="m12 6.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"/></symbol>
 <symbol id="i-sort" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h6"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
+<symbol id="i-l" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
 <symbol id="i-bigpin" viewBox="0 0 44 54"><path d="M22 52S4 34.6 4 21a18 18 0 0 1 36 0c0 13.6-18 31-18 31z" fill="currentColor" stroke="#fff" stroke-width="3"/><circle cx="22" cy="21" r="6.5" fill="#fff" stroke="none"/></symbol>
 </defs></svg>
 
@@ -574,6 +583,9 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <div id="destList" class="card" style="padding:4px 14px"></div>
       <p class="hint" style="text-align:center">Consejo: si son domicilios de pacientes, puedes usar iniciales o un código en vez del nombre completo.</p>
     </section>
+
+    <!-- ===== VER UNA JORNADA (solo lectura) ===== -->
+    <section class="view" id="v-ver" hidden><div id="verBox" style="display:flex;flex-direction:column;gap:12px"></div></section>
 
     <!-- ===== HISTORIAL ===== -->
     <section class="view" id="v-hist" hidden>
@@ -688,7 +700,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-6';
+const VER = '2026-11-02-7';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -999,30 +1011,70 @@ map.on('click', e => {
   if (++tapHint === 2 && !M.tapHint) { M.tapHint = 1; saveM(); toast('Para añadir una parada, usa «Elegir en el mapa» o el buscador.', { ms: 4200 }); }
 });
 
-/* ---- Ver una jornada guardada en el mapa ---- */
+/* ---- Ver una jornada guardada: vista propia, de solo lectura (mapa + sus datos) ---- */
 async function showHistOnMap(j, keep) {
+  if (!j.start) return toast('Esta jornada no tiene punto de partida guardado.');
   viewingHist = j; lyHist.clearLayers(); drawMarkers(); drawRoute();
-  if (!j.start) return;
-  setView('ruta');
-  const pts = pointsOf(j);
+  if (!keep) { if (view !== 'ver') { try { history.pushState({ rzv: 1 }, ''); } catch (e) {} } setView('ver'); renderVer(j); setTimeout(() => { map.invalidateSize(); fitCur(isMob() ? 36 : 60); }, 60); }
   drawHistMarkers(j);
-  $('#histPill').hidden = false; $('#histPillT').innerHTML = `<b>${esc(j.label)}</b> · ${esc(fmtDateS(j.iso))} · ${fmtKm(j.tot.road)}`;
-  if (!keep) { if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }); setTimeout(() => { map.invalidateSize(); fitCur(50); }, 60); }
-  const r = await computeRoute(pts);
+  const pts = pointsOf(j), r = await computeRoute(pts);
   if (viewingHist !== j) return;
   const line = r.geom && r.geom.length > 1 ? r.geom : pts.map(p => [p.lat, p.lon]);
-  const col = css('--mu') || '#5a6578';
   L.polyline(line, { color: css('--card'), weight: 8, opacity: .85, interactive: false }).addTo(lyHist);
-  L.polyline(line, { color: col, weight: 4.5, opacity: .9, interactive: false, dashArray: r.src === 'road' ? null : '2 9' }).addTo(lyHist);
+  L.polyline(line, { color: css('--em2'), weight: 4.5, opacity: .95, interactive: false, lineCap: 'round', dashArray: r.src === 'road' ? null : '2 9' }).addTo(lyHist);
 }
 const lyHistMk = L.layerGroup().addTo(map);
 function drawHistMarkers(j) {
   lyHistMk.clearLayers(); if (!j || !j.start) return;
-  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s h'), interactive: false }).addTo(lyHistMk);
-  stopGroups(j.stops).forEach(g => { const lab = g.map(x => x.i + 1).join(' · '); L.marker(groupCenter(g), { icon: pinIcon('h' + (g.length > 1 ? ' m' : ''), lab, g.length), interactive: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i }).addTo(lyHistMk); });
+  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s'), interactive: false, zIndexOffset: 500 }).bindTooltip(esc(j.start.label)).addTo(lyHistMk);
+  stopGroups(j.stops).forEach(g => {
+    const lab = g.map(x => x.i + 1).join(' · '), same = g.every(x => near(x.s, g[0].s));
+    const m = L.marker(groupCenter(g), { icon: pinIcon(g.length > 1 ? 'm' : '', lab, g.length), keyboard: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i })
+      .bindTooltip(g.length > 1 ? `<b>Paradas ${lab}</b>${[...new Set(g.map(x => x.s.label))].map(l => '<br>' + esc(l)).join('')}` : esc(g[0].s.label), { direction: 'top', offset: [0, -12] });
+    m.on('click', e => { L.DomEvent.stop(e); if (same) { focusVerStop(g[0].i); m.openTooltip(); } else map.fitBounds(L.latLngBounds(g.map(x => [x.s.lat, x.s.lon])), { padding: [70, 70], maxZoom: 17, animate: !RM }); });
+    m.addTo(lyHistMk);
+  });
 }
 function closeHistView() { lyHistMk.clearLayers(); viewingHist = null; lyHist.clearLayers(); $('#histPill').hidden = true; drawMarkers(); drawRoute(); }
 $('#histPillX').onclick = closeHistView;
+function renderVer(j) {
+  const el = $('#verBox'), n = j.stops.length, real = isReal(j);
+  const names = [...j.stops.map((s, i) => s.label || `Parada ${i + 1}`)];
+  let acc = 0;
+  const row = (i, dot, name, extra = '') => { const k = j.legs && j.legs[i] != null ? j.legs[i] : null; if (k != null) acc += k; const m = legMin(j, i);
+    return `<button class="pt vr" data-i="${i}">${dot}<span class="tx"><b>${esc(name)}</b><small>${k != null ? `+${nf1.format(k)} km${m != null && !real ? ' · ' + fmtDur(m) : ''} · total ${nf1.format(acc)}` : ''}${extra}</small></span></button>`; };
+  const same = i => j.stops.findIndex((s, k) => k < i && near(s, j.stops[i]));
+  el.innerHTML = `
+    <div class="vh vrh"><button class="gb" id="verBack" aria-label="Volver al historial">${ic('l')}</button><div><h1>${esc(j.label)}</h1><p>${esc(fmtDate(j.iso))}${j.start.time ? ' · salida ' + esc(j.start.time) : ''}</p></div></div>
+    <div class="card sum">
+      <div class="sumk"><span class="v">${nf1.format(j.tot.road)}</span><span class="u">km</span><span class="src">${est(j) ? `<span class="chip w">${ic('off')}Estimada</span>` : `<span class="chip">${ic('ck')}Por carretera</span>`}</span></div>
+      <div class="sumg"><div><b>${fmtDur(jDur(j))}</b><span>Al volante${real ? ' · real' : ''}</span></div><div><b>${fmtEur(j.tot.cost)}</b><span>Coste</span></div><div><b>${n}</b><span>Paradas</span></div></div>
+      ${real && j.tot.dur ? `<p class="retn">Estimado: <b>${fmtDur(j.tot.dur)}</b> · anotado a mano: <b>${fmtDur(j.tot.durM)}</b></p>` : ''}
+    </div>
+    <div class="card"><div class="ch"><span>${ic('route')}Recorrido</span><small>toca una parada para verla</small></div><div class="stops">
+      <div class="pt vr" data-i="-1"><span class="dot s"></span><span class="tx"><b>${esc(j.start.label)}</b><small>Salida${j.start.time ? ' · ' + esc(j.start.time) : ''}</small></span></div>
+      ${j.stops.map((s, i) => row(i, `<span class="dot">${i + 1}</span>`, names[i], same(i) >= 0 ? `<span class="same">${ic('rep')}Vuelves a la parada ${same(i) + 1}</span>` : '')).join('')}
+      ${j.ret ? row(n, `<span class="dot r">${ic('ret')}</span>`, 'Vuelta a ' + j.start.label) : ''}
+    </div></div>
+    ${j.notes ? `<div class="card"><div class="ch"><span>${ic('note')}Notas</span></div><p style="white-space:pre-wrap;font-size:.9rem">${esc(j.notes)}</p></div>` : ''}
+    <div class="vracts"><button class="btn" id="verShare">${ic('share')}Compartir</button><button class="btn g" id="verEdit">${ic('edit')}Editar</button><button class="btn g" id="verRep">${ic('rep')}Repetir</button></div>
+    ${!real ? `<button class="lnk" id="verReal" style="align-self:center;font-size:.8125rem">${ic('clock')}Anotar el tiempo real al volante</button>` : ''}`;
+  $('#verBack').onclick = leaveVer;
+  $('#verShare').onclick = () => shareEntry(j);
+  $('#verEdit').onclick = () => startEdit(j);
+  $('#verRep').onclick = () => repeatEntry(j);
+  const rr = $('#verReal'); if (rr) rr.onclick = () => setRealTime(j);
+  el.querySelectorAll('.pt.vr').forEach(b => b.onclick = () => focusVerStop(+b.dataset.i));
+}
+function focusVerStop(i) {
+  const j = viewingHist; if (!j) return;
+  const p = i < 0 || i >= j.stops.length ? j.start : j.stops[i];
+  $$('#verBox .pt.vr').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+  if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+  map.setView([p.lat, p.lon], Math.max(map.getZoom(), 15), { animate: !RM });
+}
+function leaveVer() { if (history.state && history.state.rzv) { try { history.back(); return; } catch (e) {} } setView('hist'); }
+addEventListener('popstate', () => { if (view === 'ver' && !layerOpen) setView('hist'); });
 
 /* ---- Elegir en el mapa (punto fijo en el centro: sin toques accidentales) ---- */
 let pick = null, pickT = null, pickTok = 0;
@@ -2048,6 +2100,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-7', d: '2026-11-02', t: 'Ver una jornada', i: [
+    '<b>Ver en el mapa</b> abre una pantalla propia de esa jornada: su ruta en el mapa y debajo el recorrido con km y tiempo de cada tramo, las notas y los botones Compartir, Editar y Repetir.',
+    'Toca una parada de la lista para ir a ella en el mapa. La flecha de atrás vuelve al historial.'] },
   { v: '2026-11-02-6', d: '2026-11-02', t: 'Volver a un sitio', i: [
     'Si vuelves a un sitio donde ya has estado, el mapa lo muestra en un solo marcador con los dos números (por ejemplo «1 · 3»). Antes, el último tapaba al primero y parecía que faltaba una parada.',
     'Las paradas que quedan muy juntas al ver toda la isla se agrupan («1 · 2 · 3»): tócalo y el mapa se acerca para separarlas.',
@@ -2171,13 +2226,14 @@ $('#verT').textContent = 'Rutahz ' + VER; $('#verAbt').textContent = 'Versión '
 let view = 'ruta';
 function setView(v) {
   if (pick && v !== 'ruta') endPick();
+  if (view === 'ver' && v !== 'ver') closeHistView();
   view = v; document.body.className = document.body.className.replace(/\bv-\w+/g, '').trim() + ' v-' + v;
   if (document.body.classList.contains('busy') && !routing) document.body.classList.remove('busy');
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
-  $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === (v === 'ver' ? 'hist' : v); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'dest') renderDest(); else if (dSel) dSel = null; if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
   if (isMob()) scrollTo({ top: 0 }); else $('#pane').scrollTop = 0;
-  if (v === 'ruta') setTimeout(() => map.invalidateSize(), 30);
+  if (v === 'ruta' || v === 'ver') setTimeout(() => map.invalidateSize(), 30);
 }
 $$('.tab,.bb button').forEach(b => b.onclick = () => setView(b.dataset.v));
 $('#bGoDest').onclick = () => setView('dest');

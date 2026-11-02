@@ -99,30 +99,70 @@ map.on('click', e => {
   if (++tapHint === 2 && !M.tapHint) { M.tapHint = 1; saveM(); toast('Para añadir una parada, usa «Elegir en el mapa» o el buscador.', { ms: 4200 }); }
 });
 
-/* ---- Ver una jornada guardada en el mapa ---- */
+/* ---- Ver una jornada guardada: vista propia, de solo lectura (mapa + sus datos) ---- */
 async function showHistOnMap(j, keep) {
+  if (!j.start) return toast('Esta jornada no tiene punto de partida guardado.');
   viewingHist = j; lyHist.clearLayers(); drawMarkers(); drawRoute();
-  if (!j.start) return;
-  setView('ruta');
-  const pts = pointsOf(j);
+  if (!keep) { if (view !== 'ver') { try { history.pushState({ rzv: 1 }, ''); } catch (e) {} } setView('ver'); renderVer(j); setTimeout(() => { map.invalidateSize(); fitCur(isMob() ? 36 : 60); }, 60); }
   drawHistMarkers(j);
-  $('#histPill').hidden = false; $('#histPillT').innerHTML = `<b>${esc(j.label)}</b> · ${esc(fmtDateS(j.iso))} · ${fmtKm(j.tot.road)}`;
-  if (!keep) { if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' }); setTimeout(() => { map.invalidateSize(); fitCur(50); }, 60); }
-  const r = await computeRoute(pts);
+  const pts = pointsOf(j), r = await computeRoute(pts);
   if (viewingHist !== j) return;
   const line = r.geom && r.geom.length > 1 ? r.geom : pts.map(p => [p.lat, p.lon]);
-  const col = css('--mu') || '#5a6578';
   L.polyline(line, { color: css('--card'), weight: 8, opacity: .85, interactive: false }).addTo(lyHist);
-  L.polyline(line, { color: col, weight: 4.5, opacity: .9, interactive: false, dashArray: r.src === 'road' ? null : '2 9' }).addTo(lyHist);
+  L.polyline(line, { color: css('--em2'), weight: 4.5, opacity: .95, interactive: false, lineCap: 'round', dashArray: r.src === 'road' ? null : '2 9' }).addTo(lyHist);
 }
 const lyHistMk = L.layerGroup().addTo(map);
 function drawHistMarkers(j) {
   lyHistMk.clearLayers(); if (!j || !j.start) return;
-  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s h'), interactive: false }).addTo(lyHistMk);
-  stopGroups(j.stops).forEach(g => { const lab = g.map(x => x.i + 1).join(' · '); L.marker(groupCenter(g), { icon: pinIcon('h' + (g.length > 1 ? ' m' : ''), lab, g.length), interactive: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i }).addTo(lyHistMk); });
+  L.marker([j.start.lat, j.start.lon], { icon: pinIcon('s'), interactive: false, zIndexOffset: 500 }).bindTooltip(esc(j.start.label)).addTo(lyHistMk);
+  stopGroups(j.stops).forEach(g => {
+    const lab = g.map(x => x.i + 1).join(' · '), same = g.every(x => near(x.s, g[0].s));
+    const m = L.marker(groupCenter(g), { icon: pinIcon(g.length > 1 ? 'm' : '', lab, g.length), keyboard: false, zIndexOffset: (g.length > 1 ? 2000 : 1000) + g[0].i })
+      .bindTooltip(g.length > 1 ? `<b>Paradas ${lab}</b>${[...new Set(g.map(x => x.s.label))].map(l => '<br>' + esc(l)).join('')}` : esc(g[0].s.label), { direction: 'top', offset: [0, -12] });
+    m.on('click', e => { L.DomEvent.stop(e); if (same) { focusVerStop(g[0].i); m.openTooltip(); } else map.fitBounds(L.latLngBounds(g.map(x => [x.s.lat, x.s.lon])), { padding: [70, 70], maxZoom: 17, animate: !RM }); });
+    m.addTo(lyHistMk);
+  });
 }
 function closeHistView() { lyHistMk.clearLayers(); viewingHist = null; lyHist.clearLayers(); $('#histPill').hidden = true; drawMarkers(); drawRoute(); }
 $('#histPillX').onclick = closeHistView;
+function renderVer(j) {
+  const el = $('#verBox'), n = j.stops.length, real = isReal(j);
+  const names = [...j.stops.map((s, i) => s.label || `Parada ${i + 1}`)];
+  let acc = 0;
+  const row = (i, dot, name, extra = '') => { const k = j.legs && j.legs[i] != null ? j.legs[i] : null; if (k != null) acc += k; const m = legMin(j, i);
+    return `<button class="pt vr" data-i="${i}">${dot}<span class="tx"><b>${esc(name)}</b><small>${k != null ? `+${nf1.format(k)} km${m != null && !real ? ' · ' + fmtDur(m) : ''} · total ${nf1.format(acc)}` : ''}${extra}</small></span></button>`; };
+  const same = i => j.stops.findIndex((s, k) => k < i && near(s, j.stops[i]));
+  el.innerHTML = `
+    <div class="vh vrh"><button class="gb" id="verBack" aria-label="Volver al historial">${ic('l')}</button><div><h1>${esc(j.label)}</h1><p>${esc(fmtDate(j.iso))}${j.start.time ? ' · salida ' + esc(j.start.time) : ''}</p></div></div>
+    <div class="card sum">
+      <div class="sumk"><span class="v">${nf1.format(j.tot.road)}</span><span class="u">km</span><span class="src">${est(j) ? `<span class="chip w">${ic('off')}Estimada</span>` : `<span class="chip">${ic('ck')}Por carretera</span>`}</span></div>
+      <div class="sumg"><div><b>${fmtDur(jDur(j))}</b><span>Al volante${real ? ' · real' : ''}</span></div><div><b>${fmtEur(j.tot.cost)}</b><span>Coste</span></div><div><b>${n}</b><span>Paradas</span></div></div>
+      ${real && j.tot.dur ? `<p class="retn">Estimado: <b>${fmtDur(j.tot.dur)}</b> · anotado a mano: <b>${fmtDur(j.tot.durM)}</b></p>` : ''}
+    </div>
+    <div class="card"><div class="ch"><span>${ic('route')}Recorrido</span><small>toca una parada para verla</small></div><div class="stops">
+      <div class="pt vr" data-i="-1"><span class="dot s"></span><span class="tx"><b>${esc(j.start.label)}</b><small>Salida${j.start.time ? ' · ' + esc(j.start.time) : ''}</small></span></div>
+      ${j.stops.map((s, i) => row(i, `<span class="dot">${i + 1}</span>`, names[i], same(i) >= 0 ? `<span class="same">${ic('rep')}Vuelves a la parada ${same(i) + 1}</span>` : '')).join('')}
+      ${j.ret ? row(n, `<span class="dot r">${ic('ret')}</span>`, 'Vuelta a ' + j.start.label) : ''}
+    </div></div>
+    ${j.notes ? `<div class="card"><div class="ch"><span>${ic('note')}Notas</span></div><p style="white-space:pre-wrap;font-size:.9rem">${esc(j.notes)}</p></div>` : ''}
+    <div class="vracts"><button class="btn" id="verShare">${ic('share')}Compartir</button><button class="btn g" id="verEdit">${ic('edit')}Editar</button><button class="btn g" id="verRep">${ic('rep')}Repetir</button></div>
+    ${!real ? `<button class="lnk" id="verReal" style="align-self:center;font-size:.8125rem">${ic('clock')}Anotar el tiempo real al volante</button>` : ''}`;
+  $('#verBack').onclick = leaveVer;
+  $('#verShare').onclick = () => shareEntry(j);
+  $('#verEdit').onclick = () => startEdit(j);
+  $('#verRep').onclick = () => repeatEntry(j);
+  const rr = $('#verReal'); if (rr) rr.onclick = () => setRealTime(j);
+  el.querySelectorAll('.pt.vr').forEach(b => b.onclick = () => focusVerStop(+b.dataset.i));
+}
+function focusVerStop(i) {
+  const j = viewingHist; if (!j) return;
+  const p = i < 0 || i >= j.stops.length ? j.start : j.stops[i];
+  $$('#verBox .pt.vr').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+  if (isMob()) scrollTo({ top: 0, behavior: RM ? 'auto' : 'smooth' });
+  map.setView([p.lat, p.lon], Math.max(map.getZoom(), 15), { animate: !RM });
+}
+function leaveVer() { if (history.state && history.state.rzv) { try { history.back(); return; } catch (e) {} } setView('hist'); }
+addEventListener('popstate', () => { if (view === 'ver' && !layerOpen) setView('hist'); });
 
 /* ---- Elegir en el mapa (punto fijo en el centro: sin toques accidentales) ---- */
 let pick = null, pickT = null, pickTok = 0;

@@ -258,6 +258,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-02-7', d: '2026-11-02', t: 'Ver una jornada', i: [
+    '<b>Ver en el mapa</b> abre una pantalla propia de esa jornada: su ruta en el mapa y debajo el recorrido con km y tiempo de cada tramo, las notas y los botones Compartir, Editar y Repetir.',
+    'Toca una parada de la lista para ir a ella en el mapa. La flecha de atrás vuelve al historial.'] },
   { v: '2026-11-02-6', d: '2026-11-02', t: 'Volver a un sitio', i: [
     'Si vuelves a un sitio donde ya has estado, el mapa lo muestra en un solo marcador con los dos números (por ejemplo «1 · 3»). Antes, el último tapaba al primero y parecía que faltaba una parada.',
     'Las paradas que quedan muy juntas al ver toda la isla se agrupan («1 · 2 · 3»): tócalo y el mapa se acerca para separarlas.',
@@ -381,13 +384,14 @@ $('#verT').textContent = 'Rutahz ' + VER; $('#verAbt').textContent = 'Versión '
 let view = 'ruta';
 function setView(v) {
   if (pick && v !== 'ruta') endPick();
+  if (view === 'ver' && v !== 'ver') closeHistView();
   view = v; document.body.className = document.body.className.replace(/\bv-\w+/g, '').trim() + ' v-' + v;
   if (document.body.classList.contains('busy') && !routing) document.body.classList.remove('busy');
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
-  $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  $$('.tab,.bb button').forEach(b => { const on = b.dataset.v === (v === 'ver' ? 'hist' : v); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   if (v === 'stats') renderStats(); if (v === 'hist') renderHist(); if (v === 'dest') renderDest(); else if (dSel) dSel = null; if (v === 'ajustes') { renderAjustesLists(); renderBackupNote(); }
   if (isMob()) scrollTo({ top: 0 }); else $('#pane').scrollTop = 0;
-  if (v === 'ruta') setTimeout(() => map.invalidateSize(), 30);
+  if (v === 'ruta' || v === 'ver') setTimeout(() => map.invalidateSize(), 30);
 }
 $$('.tab,.bb button').forEach(b => b.onclick = () => setView(b.dataset.v));
 $('#bGoDest').onclick = () => setView('dest');
