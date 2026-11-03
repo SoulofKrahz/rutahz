@@ -216,6 +216,14 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .pt .tx small{display:block;font-size:.75rem;color:var(--mu)}
 .pt .tx small input[type=time]{border:0;background:transparent;color:var(--tx);font-weight:600;font-size:.8125rem;padding:0}
 .pt .ac{display:flex;gap:0;flex:none}
+/* Deslizar una parada */
+.stops{position:relative;touch-action:pan-y;overflow:hidden}
+[data-theme=dark] .stops .und.l{color:#1c0707}
+.stops .pt.swp{position:relative;z-index:1;background:var(--card);user-select:none;-webkit-user-select:none}
+.stops .und{position:absolute;z-index:0;border-radius:12px;background:var(--dg,#e5484d);color:#fff;display:flex;align-items:center;gap:8px;padding:0 18px;font-weight:600;font-size:.875rem;opacity:.85;pointer-events:none}
+.stops .und.l{justify-content:flex-end}.stops .und.r{justify-content:flex-start}.stops .und.sv{background:var(--em2);color:var(--onem)}.stops .und.no{background:var(--mu)}
+.stops .und.go{opacity:1}.stops .und svg{width:20px;height:20px;transition:transform .15s}.stops .und.go svg{transform:scale(1.25)}
+.swh{margin:6px 0 0;font-size:.75rem;color:var(--mu);text-align:center}
 .stops{counter-reset:s}.stops .pt{border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.stops .pt:first-child{border-top:0}
 .stops .pt.ret{opacity:.9}.stops .pt.ret b{font-weight:500;color:var(--mu)}
 .empty{padding:14px 4px;text-align:center;color:var(--mu);font-size:.8125rem}
@@ -743,7 +751,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-03-1';
+const VER = '2026-11-03-2';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1580,12 +1588,13 @@ function renderRuta() {
   $('#bStartChange').hidden = !c.start; $('#bStartChange').textContent = startOpen ? 'Cerrar' : 'Cambiar';
   const fb = $('#bStartFav'); fb.hidden = !D.fav || (c.start && near(D.fav, c.start)); if (D.fav) $('#bStartFavT').textContent = D.fav.label;
   // paradas
-  const list = $('#stopsList');
+  const list = $('#stopsList'); const oh = $('#swh'); if (oh) oh.remove();
   $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : ''; $('#bOpt').hidden = !(c.start && c.stops.length >= 3);
   if (!c.stops.length) list.innerHTML = `<div class="empty"><b>${c.start ? 'Sin paradas todavía' : 'Primero, el punto de partida'}</b>${c.start ? 'Añade cada visita en el orden en que la haces.' : 'Después añade cada visita en orden.'}</div>`;
   else {
     list.innerHTML = c.stops.map((s, i) => `<div class="pt" data-id="${s.id}"><span class="dot">${i + 1}</span><div class="tx"><input class="nm" value="${esc(s.label)}" placeholder="Parada ${i + 1}" aria-label="Nombre de la parada ${i + 1}" enterkeyhint="done"><small data-seg="${i}"></small></div><div class="ac">${clientOf(s) ? `<span class="gb on" aria-hidden="true" style="pointer-events:none;width:26px">${ic('star')}</span>` : ''}<button class="gb mn" aria-label="Opciones de la parada ${i + 1}"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button><button class="gb dg rm" aria-label="Quitar la parada ${i + 1}">${ic('x')}</button></div></div>`).join('')
       + (c.ret && c.start ? `<div class="pt ret"><span class="dot r">${ic('ret')}</span><div class="tx"><b>Vuelta a ${esc(c.start.label)}</b><small data-seg="${c.stops.length}"></small></div></div>` : '');
+    if (!M.swh && matchMedia('(pointer:coarse)').matches) list.insertAdjacentHTML('afterend', '<p class="swh" id="swh">Desliza una parada: ← para quitarla · → para guardarla en tus destinos</p>');
     list.querySelectorAll('.pt[data-id]').forEach(row => {
       const s = c.stops.find(x => x.id === row.dataset.id); if (!s) return;
       const nm = row.querySelector('.nm');
@@ -1619,6 +1628,50 @@ $('#bClear').onclick = async () => {
   D.cur = newCur(); save(); renderRuta(); recalc();
   toast('Ruta vaciada', { undo: () => { D.cur = snap; save(); renderRuta(); recalc(); } });
 };
+
+/* ---- Deslizar una parada (como en noticiahz): ← quitar · → guardar en mis destinos ----
+   Solo con el dedo (con ratón se usan los botones). Hay que pasar del 30 % del ancho (mín. 90 px) para que cuente. */
+(() => {
+  const g = $('#stopsList'); let st = null;
+  const isDest = s => !!(D.clients.find(c => c.id === s.cid) || D.clients.find(c => near(c, s)));
+  g.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || e.button > 0 || e.target.closest('button,a')) return;
+    const row = e.target.closest('.pt[data-id]'); if (!row) return;
+    if (document.activeElement && row.contains(document.activeElement) && document.activeElement.matches('input')) return; // escribiendo el nombre
+    const s = D.cur.stops.find(x => x.id === row.dataset.id); if (!s) return;
+    st = { row, s, x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0, on: 0, w: row.offsetWidth, th: Math.max(90, row.offsetWidth * 0.3), dir: 0, go: 0, dest: isDest(s) };
+  });
+  g.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (!st.on) {
+      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+        st.on = 1; try { st.row.setPointerCapture(e.pointerId); } catch (x) {}
+        const r = st.row, u = document.createElement('div'); r.classList.add('swp');
+        u.style.cssText = `left:${r.offsetLeft}px;top:${r.offsetTop}px;width:${r.offsetWidth}px;height:${r.offsetHeight}px`; st.u = u; g.appendChild(u);
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      } else { if (Math.abs(dy) > 14) st = null; return; }
+    }
+    e.preventDefault();
+    const dir = dx < 0 ? -1 : 1, keep = dir > 0 && st.dest, go = Math.abs(dx) >= st.th && !keep;
+    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('star')}<span>Ya es un destino</span>` : `${ic('star')}<span>Guardar en destinos</span>`; }
+    if (go !== st.go) { st.go = go; if (go && navigator.vibrate) try { navigator.vibrate(8); } catch (x) {} }
+    st.dx = keep ? Math.sign(dx) * Math.min(Math.abs(dx), 60) : dx; // si ya es destino, se resiste
+    st.row.style.transform = `translateX(${st.dx}px)`;
+    st.u.className = 'und ' + (dir < 0 ? 'l' : 'r sv') + (keep ? ' no' : '') + (go ? ' go' : '');
+  }, { passive: false });
+  const end = (e, cancel) => {
+    if (!st || e.pointerId !== st.id) return; const s = st; st = null; if (!s.on) return;
+    const r = s.row, go = !cancel && Math.abs(s.dx) >= s.th && !(s.dx > 0 && s.dest);
+    if (go && s.dx < 0) { // quitar: sale hacia la izquierda y se va
+      r.style.transition = RM ? 'none' : 'transform .2s,opacity .2s'; r.style.transform = 'translateX(-110%)'; r.style.opacity = 0;
+      setTimeout(() => { s.u.remove(); removeStop(s.s); }, RM ? 0 : 200); M.swh = 1; saveM(); return;
+    }
+    r.style.transition = RM ? 'none' : 'transform .22s cubic-bezier(.2,.8,.2,1)'; r.style.transform = '';
+    setTimeout(() => { s.u.remove(); r.classList.remove('swp'); r.style.transition = ''; if (go && s.dx > 0) { toggleClient(s.s); M.swh = 1; saveM(); } }, RM ? 0 : 230);
+  };
+  g.addEventListener('pointerup', e => end(e)); g.addEventListener('pointercancel', e => end(e, true));
+})();
 
 /* =================== Tiempos =================== */
 const isReal = j => j.tot && j.tot.durM != null;
@@ -2304,6 +2357,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
+    'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },
   { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [
     'Dos jornadas o dos destinos ya no pueden llamarse igual. Si ya existe, Rutahz te avisa y te propone otro nombre, por ejemplo «Ruta del 3 de noviembre (2)».',
     'El nombre automático de la jornada sigue a la fecha que elijas.',

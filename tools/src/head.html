@@ -216,6 +216,14 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .pt .tx small{display:block;font-size:.75rem;color:var(--mu)}
 .pt .tx small input[type=time]{border:0;background:transparent;color:var(--tx);font-weight:600;font-size:.8125rem;padding:0}
 .pt .ac{display:flex;gap:0;flex:none}
+/* Deslizar una parada */
+.stops{position:relative;touch-action:pan-y;overflow:hidden}
+[data-theme=dark] .stops .und.l{color:#1c0707}
+.stops .pt.swp{position:relative;z-index:1;background:var(--card);user-select:none;-webkit-user-select:none}
+.stops .und{position:absolute;z-index:0;border-radius:12px;background:var(--dg,#e5484d);color:#fff;display:flex;align-items:center;gap:8px;padding:0 18px;font-weight:600;font-size:.875rem;opacity:.85;pointer-events:none}
+.stops .und.l{justify-content:flex-end}.stops .und.r{justify-content:flex-start}.stops .und.sv{background:var(--em2);color:var(--onem)}.stops .und.no{background:var(--mu)}
+.stops .und.go{opacity:1}.stops .und svg{width:20px;height:20px;transition:transform .15s}.stops .und.go svg{transform:scale(1.25)}
+.swh{margin:6px 0 0;font-size:.75rem;color:var(--mu);text-align:center}
 .stops{counter-reset:s}.stops .pt{border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.stops .pt:first-child{border-top:0}
 .stops .pt.ret{opacity:.9}.stops .pt.ret b{font-weight:500;color:var(--mu)}
 .empty{padding:14px 4px;text-align:center;color:var(--mu);font-size:.8125rem}

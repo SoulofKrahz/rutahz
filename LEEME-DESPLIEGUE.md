@@ -62,6 +62,7 @@ Abren la app en Chromium con los servicios externos simulados (OSRM, Nominatim, 
 | jornadas exportadas | Exportar marca las jornadas; cabecera de cada mes; filtro «Sin exportar»; «cambiada tras exportar»; «Solo las pendientes»; marcar y desmarcar a mano |
 | iPhone: instalar antes de empezar | En Safari de iPhone sin datos, pide instalar antes del PIN; instalada, la bienvenida recuerda restaurar dentro |
 | nombres sin repetir | Jornadas y destinos no pueden repetir nombre (sin mayúsculas ni acentos); se propone uno; «Arreglar» para los que ya había |
+| deslizar paradas | ← quita (con deshacer), → guarda en destinos; poco recorrido no hace nada; si ya es destino no lo quita |
 | copias y novedades | Enviar .txt, descargar .json, restaurar .txt, importar copia de la versión 1, novedades una sola vez |
 | visitas pulsables | Desde Destinos y Resumen una visita abre su jornada |
 | móvil táctil | iPhone SE y Pixel 7: ningún campo con letra < 16 px (zoom en iPhone) ni botón < 40 px |

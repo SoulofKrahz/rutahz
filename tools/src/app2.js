@@ -587,12 +587,13 @@ function renderRuta() {
   $('#bStartChange').hidden = !c.start; $('#bStartChange').textContent = startOpen ? 'Cerrar' : 'Cambiar';
   const fb = $('#bStartFav'); fb.hidden = !D.fav || (c.start && near(D.fav, c.start)); if (D.fav) $('#bStartFavT').textContent = D.fav.label;
   // paradas
-  const list = $('#stopsList');
+  const list = $('#stopsList'); const oh = $('#swh'); if (oh) oh.remove();
   $('#stopsN').textContent = c.stops.length ? `${c.stops.length}` : ''; $('#bOpt').hidden = !(c.start && c.stops.length >= 3);
   if (!c.stops.length) list.innerHTML = `<div class="empty"><b>${c.start ? 'Sin paradas todavía' : 'Primero, el punto de partida'}</b>${c.start ? 'Añade cada visita en el orden en que la haces.' : 'Después añade cada visita en orden.'}</div>`;
   else {
     list.innerHTML = c.stops.map((s, i) => `<div class="pt" data-id="${s.id}"><span class="dot">${i + 1}</span><div class="tx"><input class="nm" value="${esc(s.label)}" placeholder="Parada ${i + 1}" aria-label="Nombre de la parada ${i + 1}" enterkeyhint="done"><small data-seg="${i}"></small></div><div class="ac">${clientOf(s) ? `<span class="gb on" aria-hidden="true" style="pointer-events:none;width:26px">${ic('star')}</span>` : ''}<button class="gb mn" aria-label="Opciones de la parada ${i + 1}"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button><button class="gb dg rm" aria-label="Quitar la parada ${i + 1}">${ic('x')}</button></div></div>`).join('')
       + (c.ret && c.start ? `<div class="pt ret"><span class="dot r">${ic('ret')}</span><div class="tx"><b>Vuelta a ${esc(c.start.label)}</b><small data-seg="${c.stops.length}"></small></div></div>` : '');
+    if (!M.swh && matchMedia('(pointer:coarse)').matches) list.insertAdjacentHTML('afterend', '<p class="swh" id="swh">Desliza una parada: ← para quitarla · → para guardarla en tus destinos</p>');
     list.querySelectorAll('.pt[data-id]').forEach(row => {
       const s = c.stops.find(x => x.id === row.dataset.id); if (!s) return;
       const nm = row.querySelector('.nm');
@@ -626,3 +627,47 @@ $('#bClear').onclick = async () => {
   D.cur = newCur(); save(); renderRuta(); recalc();
   toast('Ruta vaciada', { undo: () => { D.cur = snap; save(); renderRuta(); recalc(); } });
 };
+
+/* ---- Deslizar una parada (como en noticiahz): ← quitar · → guardar en mis destinos ----
+   Solo con el dedo (con ratón se usan los botones). Hay que pasar del 30 % del ancho (mín. 90 px) para que cuente. */
+(() => {
+  const g = $('#stopsList'); let st = null;
+  const isDest = s => !!(D.clients.find(c => c.id === s.cid) || D.clients.find(c => near(c, s)));
+  g.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || e.button > 0 || e.target.closest('button,a')) return;
+    const row = e.target.closest('.pt[data-id]'); if (!row) return;
+    if (document.activeElement && row.contains(document.activeElement) && document.activeElement.matches('input')) return; // escribiendo el nombre
+    const s = D.cur.stops.find(x => x.id === row.dataset.id); if (!s) return;
+    st = { row, s, x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0, on: 0, w: row.offsetWidth, th: Math.max(90, row.offsetWidth * 0.3), dir: 0, go: 0, dest: isDest(s) };
+  });
+  g.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (!st.on) {
+      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+        st.on = 1; try { st.row.setPointerCapture(e.pointerId); } catch (x) {}
+        const r = st.row, u = document.createElement('div'); r.classList.add('swp');
+        u.style.cssText = `left:${r.offsetLeft}px;top:${r.offsetTop}px;width:${r.offsetWidth}px;height:${r.offsetHeight}px`; st.u = u; g.appendChild(u);
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      } else { if (Math.abs(dy) > 14) st = null; return; }
+    }
+    e.preventDefault();
+    const dir = dx < 0 ? -1 : 1, keep = dir > 0 && st.dest, go = Math.abs(dx) >= st.th && !keep;
+    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('star')}<span>Ya es un destino</span>` : `${ic('star')}<span>Guardar en destinos</span>`; }
+    if (go !== st.go) { st.go = go; if (go && navigator.vibrate) try { navigator.vibrate(8); } catch (x) {} }
+    st.dx = keep ? Math.sign(dx) * Math.min(Math.abs(dx), 60) : dx; // si ya es destino, se resiste
+    st.row.style.transform = `translateX(${st.dx}px)`;
+    st.u.className = 'und ' + (dir < 0 ? 'l' : 'r sv') + (keep ? ' no' : '') + (go ? ' go' : '');
+  }, { passive: false });
+  const end = (e, cancel) => {
+    if (!st || e.pointerId !== st.id) return; const s = st; st = null; if (!s.on) return;
+    const r = s.row, go = !cancel && Math.abs(s.dx) >= s.th && !(s.dx > 0 && s.dest);
+    if (go && s.dx < 0) { // quitar: sale hacia la izquierda y se va
+      r.style.transition = RM ? 'none' : 'transform .2s,opacity .2s'; r.style.transform = 'translateX(-110%)'; r.style.opacity = 0;
+      setTimeout(() => { s.u.remove(); removeStop(s.s); }, RM ? 0 : 200); M.swh = 1; saveM(); return;
+    }
+    r.style.transition = RM ? 'none' : 'transform .22s cubic-bezier(.2,.8,.2,1)'; r.style.transform = '';
+    setTimeout(() => { s.u.remove(); r.classList.remove('swp'); r.style.transition = ''; if (go && s.dx > 0) { toggleClient(s.s); M.swh = 1; saveM(); } }, RM ? 0 : 230);
+  };
+  g.addEventListener('pointerup', e => end(e)); g.addEventListener('pointercancel', e => end(e, true));
+})();

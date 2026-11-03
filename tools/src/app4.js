@@ -261,6 +261,8 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
+    'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },
   { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [
     'Dos jornadas o dos destinos ya no pueden llamarse igual. Si ya existe, Rutahz te avisa y te propone otro nombre, por ejemplo «Ruta del 3 de noviembre (2)».',
     'El nombre automático de la jornada sigue a la fecha que elijas.',
