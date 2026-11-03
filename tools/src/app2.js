@@ -243,13 +243,19 @@ function moveStop(s, to) {
   if (j < 0 || j >= a.length || j === i) return;
   a.splice(i, 1); a.splice(j, 0, s); save(); renderRuta(); recalc();
 }
+// Al dejar de ser destino, las paradas de la ruta abierta que lo usaban vuelven a llamarse como su dirección.
+// Devuelve una función que lo deshace (n = cuántas paradas cambiaron).
+function detachDest(c) {
+  const ch = [];
+  openRoutes().forEach(r => r.stops.forEach(s => { if (s.cid === c.id || (!s.cid && near(s, c))) { ch.push([s, s.label, s.cid]); s.cid = null; if (c.addr && s.label === c.label) s.label = c.addr; } }));
+  const back = () => ch.forEach(([s, l, id]) => { s.label = l; s.cid = id; }); back.n = ch.length; return back;
+}
 function toggleClient(s) {
   const cl = D.clients.find(c => c.id === s.cid) || D.clients.find(c => near(c, s));
   if (cl) {
-    const idx = D.clients.indexOf(cl); D.clients.splice(idx, 1);
-    D.cur.stops.forEach(x => { if (x.cid === cl.id) x.cid = null; });
-    save(); renderRuta(); renderAjustesLists();
-    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
+    const idx = D.clients.indexOf(cl), back = detachDest(cl); D.clients.splice(idx, 1);
+    save(); renderRuta(); renderAjustesLists(); drawMarkers();
+    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); back(); save(); renderRuta(); renderAjustesLists(); drawMarkers(); } });
   } else {
     const lb = uniqName(s.label || 'Destino', destNames()), c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
     D.clients.push(c); s.cid = c.id; if (lb !== (s.label || 'Destino')) s.label = lb; save(); renderRuta(); renderAjustesLists();
@@ -408,7 +414,7 @@ function destMenu(c) {
     { icon: 'edit', label: 'Cambiar nombre', fn: () => renameDest(c) },
     { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
     v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
-    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia', danger: true, fn: () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); D.cur.stops.forEach(s => { if (s.cid === c.id) s.cid = null; }); save(); renderDest(); renderRuta(); toast(`«${c.label}» eliminado`, { undo: () => { D.clients.splice(i, 0, c); save(); renderDest(); renderRuta(); } }); } },
+    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia; en la ruta de hoy la parada vuelve a su dirección', danger: true, fn: () => { const i = D.clients.indexOf(c), back = detachDest(c); D.clients.splice(i, 1); save(); renderDest(); renderRuta(); drawMarkers(); toast(`«${c.label}» eliminado${back.n ? ', y en la ruta de hoy vuelve a su dirección' : ''}`, { ms: 5000, undo: () => { D.clients.splice(i, 0, c); back(); save(); renderDest(); renderRuta(); drawMarkers(); } }); } },
   ] });
 }
 /* ---- Cambios en un destino: qué se actualiza ----
@@ -653,9 +659,9 @@ $('#bClear').onclick = async () => {
     }
     e.preventDefault();
     const dir = dx < 0 ? -1 : 1, keep = dir > 0 && st.dest, go = Math.abs(dx) >= st.th && !keep;
-    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('star')}<span>Ya es un destino</span>` : `${ic('star')}<span>Guardar en destinos</span>`; }
+    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('ck')}<span>Ya guardado</span>` : `${ic('star')}<span>Guardar</span>`; }
     if (go !== st.go) { st.go = go; if (go && navigator.vibrate) try { navigator.vibrate(8); } catch (x) {} }
-    st.dx = keep ? Math.sign(dx) * Math.min(Math.abs(dx), 60) : dx; // si ya es destino, se resiste
+    st.dx = keep ? Math.min(dx, 150 + (dx - 150) * 0.15) : dx; // si ya es destino, se resiste (y deja leer «Ya guardado»)
     st.row.style.transform = `translateX(${st.dx}px)`;
     st.u.className = 'und ' + (dir < 0 ? 'l' : 'r sv') + (keep ? ' no' : '') + (go ? ' go' : '');
   }, { passive: false });

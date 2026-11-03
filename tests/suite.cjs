@@ -339,7 +339,7 @@ test('nombres sin repetir', async ({ browser, base }) => {
 
 /* 6i · Deslizar una parada: ← quitar (con deshacer), → guardar en destinos; con poco recorrido no hace nada */
 test('deslizar paradas', async ({ browser, base }) => {
-  const d = data({ cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 'a', ...P(39.7217, 2.9106, 'Casa de M.') }, { id: 'b', ...P(39.5694, 3.2085, 'Casa de J.') }], notes: '', ret: true } });
+  const d = data({ clients: [{ id: 'c2', ...P(39.49, 2.89, 'Centro'), addr: 'Carrer Major, 22, Llucmajor' }], cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 'a', ...P(39.7217, 2.9106, 'Casa de M.') }, { id: 'b', ...P(39.5694, 3.2085, 'Casa de J.') }, { id: 'z', ...P(39.49, 2.89, 'Centro', 'c2') }], notes: '', ret: true } });
   const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
   await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(400);
   ok(await p.isVisible('#swh'), 'la primera vez explica el gesto');
@@ -347,17 +347,28 @@ test('deslizar paradas', async ({ browser, base }) => {
     const ev = (t, X) => r.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch', clientX: X, clientY: y, isPrimary: true }));
     ev('pointerdown', x); for (let i = 1; i <= 8; i++) ev('pointermove', x + dx * i / 8); ev('pointerup', x + dx); }, [id, dx]);
   await swipe('a', 40); await p.waitForTimeout(400);
-  ok(await p.evaluate(() => __rz.D.cur.stops.length === 2 && !__rz.D.clients.length), 'un deslizamiento corto no hace nada');
+  ok(await p.evaluate(() => __rz.D.cur.stops.length === 3 && __rz.D.clients.length === 1), 'un deslizamiento corto no hace nada');
   await swipe('a', 260); await p.waitForTimeout(500);
-  ok(await p.evaluate(() => __rz.D.clients.length === 1 && __rz.D.clients[0].label === 'Casa de M.'), 'hacia la derecha la guarda en destinos');
+  ok(await p.evaluate(() => __rz.D.clients.length === 2 && __rz.D.clients[1].label === 'Casa de M.'), 'hacia la derecha la guarda en destinos');
   await swipe('a', 260); await p.waitForTimeout(500);
-  ok(await p.evaluate(() => __rz.D.clients.length === 1), 'si ya es destino, hacia la derecha no la quita de destinos');
+  ok(await p.evaluate(() => __rz.D.clients.length === 2), 'si ya es destino, hacia la derecha no la quita de destinos');
   await swipe('b', -260); await p.waitForTimeout(500);
-  ok(await p.evaluate(() => __rz.D.cur.stops.length === 1 && __rz.D.cur.stops[0].id === 'a'), 'hacia la izquierda la quita');
+  ok(await p.evaluate(() => __rz.D.cur.stops.length === 2 && !__rz.D.cur.stops.some(x => x.id === 'b')), 'hacia la izquierda la quita');
   ok(/Quitada/.test(await p.textContent('#toast')), 'con aviso y Deshacer');
   await p.click('#toast button'); await p.waitForTimeout(300);
-  ok(await p.evaluate(() => __rz.D.cur.stops.length === 2), 'Deshacer la devuelve');
+  ok(await p.evaluate(() => __rz.D.cur.stops.length === 3), 'Deshacer la devuelve');
   ok(!(await p.isVisible('#swh')), 'después del primer gesto la explicación ya no sale');
+  // textos que se leen a mitad de gesto
+  const half = (id, dx) => p.evaluate(([id, dx]) => { const r = document.querySelector(`#stopsList .pt[data-id="${id}"] .dot`), bb = r.getBoundingClientRect(), x = bb.left + 40, y = bb.top + bb.height / 2;
+    const ev = (t, X) => r.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 9, pointerType: 'touch', clientX: X, clientY: y }));
+    ev('pointerdown', x); for (let i = 1; i <= 6; i++) ev('pointermove', x + dx * i / 6); const t = document.querySelector('#stopsList .und').textContent; ev('pointercancel', x + dx); return t; }, [id, dx]);
+  ok(await half('z', 200) === 'Ya guardado', 'si ya es destino, a la derecha pone «Ya guardado»');
+  await p.waitForTimeout(300);
+  // eliminar un destino que está en la ruta de hoy
+  await p.click('.bb button[data-v="dest"]'); await p.click('.dr:has-text("Centro") .bd'); await p.click('.amb:has-text("Eliminar destino")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => { const z = __rz.D.cur.stops.find(x => x.id === 'z'); return z.label === 'Carrer Major, 22, Llucmajor' && !z.cid; }), 'al eliminar el destino, la parada de hoy vuelve a su dirección');
+  await p.click('#toast button'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => { const z = __rz.D.cur.stops.find(x => x.id === 'z'); return z.label === 'Centro' && z.cid === 'c2'; }), 'Deshacer devuelve el destino y el nombre');
   ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
   await ctx.close();
 });

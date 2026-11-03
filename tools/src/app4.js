@@ -261,6 +261,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-3', d: '2026-11-03', t: 'Retoques al deslizar y al borrar destinos', i: [
+    'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
+    'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },
   { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
     'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },
   { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [

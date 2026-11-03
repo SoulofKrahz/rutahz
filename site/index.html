@@ -220,8 +220,8 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .stops{position:relative;touch-action:pan-y;overflow:hidden}
 [data-theme=dark] .stops .und.l{color:#1c0707}
 .stops .pt.swp{position:relative;z-index:1;background:var(--card);user-select:none;-webkit-user-select:none}
-.stops .und{position:absolute;z-index:0;border-radius:12px;background:var(--dg,#e5484d);color:#fff;display:flex;align-items:center;gap:8px;padding:0 18px;font-weight:600;font-size:.875rem;opacity:.85;pointer-events:none}
-.stops .und.l{justify-content:flex-end}.stops .und.r{justify-content:flex-start}.stops .und.sv{background:var(--em2);color:var(--onem)}.stops .und.no{background:var(--mu)}
+.stops .und{position:absolute;z-index:0;border-radius:12px;background:var(--dg,#e5484d);color:#fff;display:flex;align-items:center;gap:6px;padding:0 12px;font-weight:700;font-size:.9375rem;opacity:.9;pointer-events:none;white-space:nowrap}
+.stops .und.l{justify-content:flex-end}.stops .und.r{justify-content:flex-start}.stops .und.sv{background:var(--em2);color:var(--onem)}.stops .und.no{background:var(--tint);color:var(--em);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--em) 40%,transparent)}
 .stops .und.go{opacity:1}.stops .und svg{width:20px;height:20px;transition:transform .15s}.stops .und.go svg{transform:scale(1.25)}
 .swh{margin:6px 0 0;font-size:.75rem;color:var(--mu);text-align:center}
 .stops{counter-reset:s}.stops .pt{border-top:1px solid color-mix(in srgb,var(--bd) 70%,transparent)}.stops .pt:first-child{border-top:0}
@@ -751,7 +751,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-03-2';
+const VER = '2026-11-03-3';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1244,13 +1244,19 @@ function moveStop(s, to) {
   if (j < 0 || j >= a.length || j === i) return;
   a.splice(i, 1); a.splice(j, 0, s); save(); renderRuta(); recalc();
 }
+// Al dejar de ser destino, las paradas de la ruta abierta que lo usaban vuelven a llamarse como su dirección.
+// Devuelve una función que lo deshace (n = cuántas paradas cambiaron).
+function detachDest(c) {
+  const ch = [];
+  openRoutes().forEach(r => r.stops.forEach(s => { if (s.cid === c.id || (!s.cid && near(s, c))) { ch.push([s, s.label, s.cid]); s.cid = null; if (c.addr && s.label === c.label) s.label = c.addr; } }));
+  const back = () => ch.forEach(([s, l, id]) => { s.label = l; s.cid = id; }); back.n = ch.length; return back;
+}
 function toggleClient(s) {
   const cl = D.clients.find(c => c.id === s.cid) || D.clients.find(c => near(c, s));
   if (cl) {
-    const idx = D.clients.indexOf(cl); D.clients.splice(idx, 1);
-    D.cur.stops.forEach(x => { if (x.cid === cl.id) x.cid = null; });
-    save(); renderRuta(); renderAjustesLists();
-    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
+    const idx = D.clients.indexOf(cl), back = detachDest(cl); D.clients.splice(idx, 1);
+    save(); renderRuta(); renderAjustesLists(); drawMarkers();
+    toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); back(); save(); renderRuta(); renderAjustesLists(); drawMarkers(); } });
   } else {
     const lb = uniqName(s.label || 'Destino', destNames()), c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
     D.clients.push(c); s.cid = c.id; if (lb !== (s.label || 'Destino')) s.label = lb; save(); renderRuta(); renderAjustesLists();
@@ -1409,7 +1415,7 @@ function destMenu(c) {
     { icon: 'edit', label: 'Cambiar nombre', fn: () => renameDest(c) },
     { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
     v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
-    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia', danger: true, fn: () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); D.cur.stops.forEach(s => { if (s.cid === c.id) s.cid = null; }); save(); renderDest(); renderRuta(); toast(`«${c.label}» eliminado`, { undo: () => { D.clients.splice(i, 0, c); save(); renderDest(); renderRuta(); } }); } },
+    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia; en la ruta de hoy la parada vuelve a su dirección', danger: true, fn: () => { const i = D.clients.indexOf(c), back = detachDest(c); D.clients.splice(i, 1); save(); renderDest(); renderRuta(); drawMarkers(); toast(`«${c.label}» eliminado${back.n ? ', y en la ruta de hoy vuelve a su dirección' : ''}`, { ms: 5000, undo: () => { D.clients.splice(i, 0, c); back(); save(); renderDest(); renderRuta(); drawMarkers(); } }); } },
   ] });
 }
 /* ---- Cambios en un destino: qué se actualiza ----
@@ -1654,9 +1660,9 @@ $('#bClear').onclick = async () => {
     }
     e.preventDefault();
     const dir = dx < 0 ? -1 : 1, keep = dir > 0 && st.dest, go = Math.abs(dx) >= st.th && !keep;
-    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('star')}<span>Ya es un destino</span>` : `${ic('star')}<span>Guardar en destinos</span>`; }
+    if (st.dir !== dir) { st.dir = dir; st.u.innerHTML = dir < 0 ? `${ic('trash')}<span>Quitar</span>` : keep ? `${ic('ck')}<span>Ya guardado</span>` : `${ic('star')}<span>Guardar</span>`; }
     if (go !== st.go) { st.go = go; if (go && navigator.vibrate) try { navigator.vibrate(8); } catch (x) {} }
-    st.dx = keep ? Math.sign(dx) * Math.min(Math.abs(dx), 60) : dx; // si ya es destino, se resiste
+    st.dx = keep ? Math.min(dx, 150 + (dx - 150) * 0.15) : dx; // si ya es destino, se resiste (y deja leer «Ya guardado»)
     st.row.style.transform = `translateX(${st.dx}px)`;
     st.u.className = 'und ' + (dir < 0 ? 'l' : 'r sv') + (keep ? ' no' : '') + (go ? ' go' : '');
   }, { passive: false });
@@ -2357,6 +2363,9 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-3', d: '2026-11-03', t: 'Retoques al deslizar y al borrar destinos', i: [
+    'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
+    'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },
   { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
     'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },
   { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [
