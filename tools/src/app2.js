@@ -257,9 +257,14 @@ function toggleClient(s) {
     save(); renderRuta(); renderAjustesLists(); drawMarkers();
     toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); back(); save(); renderRuta(); renderAjustesLists(); drawMarkers(); } });
   } else {
-    const lb = uniqName(s.label || 'Destino', destNames()), c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
-    D.clients.push(c); s.cid = c.id; if (lb !== (s.label || 'Destino')) s.label = lb; save(); renderRuta(); renderAjustesLists();
-    toast(lb !== c.addr ? `Guardado como «${lb}»: ya tenías un destino con ese nombre` : `Guardado en tus destinos: ${c.label}`, { ms: 4000 });
+    const sug = uniqName(s.label || 'Destino', destNames());
+    prompt2('Guardar en mis destinos', sug, { text: 'Ponle un nombre para reconocerlo, por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar', validate: destNameErr(null) }).then(nm => {
+      if (nm == null) return;
+      const lb = nm.trim() || sug, c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
+      D.clients.push(c); openRoutes().forEach(r => r.stops.forEach(x => { if (x === s || (!x.cid && near(x, s))) { x.cid = c.id; x.label = lb; } }));
+      save(); renderRuta(); renderAjustesLists(); drawMarkers();
+      toast(`Guardado en tus destinos: ${lb}`);
+    });
   }
 }
 function stopMenu(s) {

@@ -348,8 +348,12 @@ test('deslizar paradas', async ({ browser, base }) => {
     ev('pointerdown', x); for (let i = 1; i <= 8; i++) ev('pointermove', x + dx * i / 8); ev('pointerup', x + dx); }, [id, dx]);
   await swipe('a', 40); await p.waitForTimeout(400);
   ok(await p.evaluate(() => __rz.D.cur.stops.length === 3 && __rz.D.clients.length === 1), 'un deslizamiento corto no hace nada');
-  await swipe('a', 260); await p.waitForTimeout(500);
-  ok(await p.evaluate(() => __rz.D.clients.length === 2 && __rz.D.clients[1].label === 'Casa de M.'), 'hacia la derecha la guarda en destinos');
+  await swipe('a', 260); await p.waitForSelector('#pv', { timeout: 3000 }).catch(() => {});
+  ok(await p.isVisible('#pv') && await p.inputValue('#pv') === 'Casa de M.', 'hacia la derecha pide el nombre, con el de la parada propuesto');
+  await p.click('.dlg .acts button:has-text("Cancelar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.clients.length === 1), 'si se cancela, no guarda nada');
+  await swipe('a', 260); await p.waitForSelector('#pv'); await p.fill('#pv', 'Casa de María'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(400);
+  ok(await p.evaluate(() => __rz.D.clients.length === 2 && __rz.D.clients[1].label === 'Casa de María' && __rz.D.cur.stops[0].label === 'Casa de María' && __rz.D.cur.stops[0].cid === __rz.D.clients[1].id), 'con el nombre puesto, la guarda en destinos y la parada pasa a llamarse así');
   await swipe('a', 260); await p.waitForTimeout(500);
   ok(await p.evaluate(() => __rz.D.clients.length === 2), 'si ya es destino, hacia la derecha no la quita de destinos');
   await swipe('b', -260); await p.waitForTimeout(500);
