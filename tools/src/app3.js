@@ -34,16 +34,24 @@ function askDetails(label, iso, durM) {
   return dlg({
     title: D.edit ? 'Guardar cambios' : 'Guardar jornada', ok: 'Guardar',
     text: `${fmtKm(R.km)} · ${D.cur.stops.length} parada${D.cur.stops.length > 1 ? 's' : ''}${D.cur.ret ? ' · con vuelta' : ''}${R.src === 'straight' ? '\nSin conexión: la distancia es estimada. Podrás recalcularla desde el historial.' : ''}`,
-    html: `<div><label class="lb" for="jn">Nombre</label><input class="inp" id="jn" type="text" maxlength="80" value="${esc(label)}" enterkeyhint="done"></div>
+    html: `<div><label class="lb" for="jn">Nombre</label><input class="inp" id="jn" type="text" maxlength="80" value="${esc(label)}" enterkeyhint="done"><p class="ferr" id="jnE" role="alert" hidden></p></div>
       <div><label class="lb" for="jd">Fecha de la jornada</label><input class="inp" id="jd" type="date" value="${esc(iso)}" max="${today()}">
       <div class="brow" style="margin-top:8px"><button class="btn g sm" data-d="${today()}">Hoy</button><button class="btn g sm" data-d="${isoOf(y)}">Ayer</button></div></div>
       <div><label class="lb">Tiempo real al volante <span style="font-weight:500">(opcional)</span></label>${durHtml('jt', durM)}<p class="hint" style="margin-top:6px">Estimado: <b>${fmtDur(R.dur)}</b>. Si sabes el tiempo real, anótalo: es el que saldrá en los informes.</p></div>`,
-    open: b => b.querySelectorAll('[data-d]').forEach(x => x.onclick = () => { b.querySelector('#jd').value = x.dataset.d; }),
+    open: b => {
+      // si el nombre es el automático, sigue a la fecha («Ruta del 2 de noviembre», sin repetir)
+      const jn = b.querySelector('#jn'), jd = b.querySelector('#jd'); let auto = jn.value;
+      const onDate = () => { if (jn.value === auto && /^Ruta del /.test(auto)) { auto = uniqName(defaultName(jd.value || today()), histNames(D.edit && D.edit.snap.id)); jn.value = auto; fieldErr(b, 'jnE', null); } };
+      b.querySelectorAll('[data-d]').forEach(x => x.onclick = () => { jd.value = x.dataset.d; onDate(); });
+      jd.addEventListener('change', onDate); jn.addEventListener('input', () => fieldErr(b, 'jnE', null));
+    },
     check: b => {
+      const nm = (b.querySelector('#jn').value.trim() || label), taken = histNames(D.edit && D.edit.snap.id);
+      if (taken.has(nameKey(nm))) { const o = D.hist.find(j => nameKey(j.label) === nameKey(nm) && !(D.edit && j.id === D.edit.snap.id)); fieldErr(b, 'jnE', { msg: `Ya tienes una jornada llamada «${o ? o.label : nm}»${o && o.iso ? ' (' + fmtDate(o.iso, { day: 'numeric', month: 'short' }) + ')' : ''}. Ponle otro nombre para no confundirlas en los informes.`, sug: uniqName(nm, taken) }); return undefined; }
       const d = b.querySelector('#jd').value || today();
       if (d > today()) { toast('La fecha no puede ser futura.'); return undefined; }
       const t = readDur(b, 'jt'); if (t === undefined) { toast('Revisa el tiempo real: entre 1 minuto y 23 h 59 min.'); return undefined; }
-      return { label: b.querySelector('#jn').value.trim() || label, iso: d, durM: t };
+      return { label: nm, iso: d, durM: t };
     }
   });
 }
@@ -51,7 +59,7 @@ function defaultName(iso) { return 'Ruta del ' + dOf(iso).toLocaleDateString('es
 $('#bSave').onclick = async () => {
   if (!D.cur.start || !D.cur.stops.length) return;
   await recalc();
-  const det = await askDetails(defaultName(today()), today()); if (!det) return;
+  const det = await askDetails(uniqName(defaultName(today()), histNames()), today()); if (!det) return;
   const e = entryFromCur(det); D.hist.push(e);
   D.cur = newCur(); R = R0();
   save(); renderRuta(); renderHist(); renderStats(); renderChip(); maybeBanner();
@@ -149,6 +157,9 @@ function renderHist() {
   const fl = hF === 'pend' ? all.filter(pendingExp) : hF === 'chg' ? all.filter(j => expOf(j) === 'chg') : all;
   const list = q ? fl.filter(j => norm(j.label).includes(q) || norm(j.notes).includes(q) || j.stops.some(s => norm(s.label).includes(q))) : fl;
   $('#histSub').textContent = D.hist.length ? `${D.hist.length} jornada${D.hist.length > 1 ? 's' : ''} · ${fmtKm0(D.hist.reduce((a, j) => a + (j.tot.road || 0), 0))}` : '';
+  const nDup = dupCount(D.hist);
+  $('#histDup').innerHTML = nDup ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nDup} jornada${nDup > 1 ? 's' : ''} con el nombre repetido. Al arreglarlo se les añade (2), (3)… a las más recientes.</span><button class="btn sm" id="bDupH">Arreglar</button></div>` : '';
+  if (nDup) $('#bDupH').onclick = () => { const ch = fixDupNames(D.hist, j => (j.iso || '') + String(j.id)); save(); renderHist(); renderStats(); toast(`${ch.length} nombre${ch.length > 1 ? 's' : ''} cambiado${ch.length > 1 ? 's' : ''}`, { undo: () => { ch.forEach(([j, l]) => j.label = l); save(); renderHist(); renderStats(); } }); };
   const nEst = D.hist.filter(est).length;
   $('#recalcBox').innerHTML = nEst ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nEst} jornada${nEst > 1 ? 's' : ''} con distancia estimada (sin conexión al guardar).</span><button class="btn sm" id="bRecalcAll">${ic('refresh')}Recalcular</button></div>` : '';
   if (nEst) $('#bRecalcAll').onclick = () => recalcEntries(D.hist.filter(est));

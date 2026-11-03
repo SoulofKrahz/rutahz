@@ -2,13 +2,32 @@
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-15';
+const VER = '2026-11-03-1';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const ic = (n, c = '') => `<svg class="i ${c}"><use href="#i-${n}"/></svg>`;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+// Nombres únicos (jornadas y destinos): se comparan sin mayúsculas, acentos ni espacios de más
+const nameKey = s => norm(String(s || '')).replace(/\s+/g, ' ');
+function uniqName(base, taken) {
+  base = String(base || '').replace(/\s+/g, ' ').trim(); if (!taken.has(nameKey(base))) return base;
+  const b = base.replace(/\s*\(\d+\)$/, '');
+  for (let i = 2; ; i++) { const n = `${b} (${i})`; if (!taken.has(nameKey(n))) return n; }
+}
+const histNames = exceptId => new Set(D.hist.filter(j => j.id !== exceptId).map(j => nameKey(j.label)));
+const destNames = except => new Set(D.clients.filter(c => c !== except).map(c => nameKey(c.label)));
+// Grupos con el mismo nombre: deja el primero (el más antiguo) y numera los demás
+function fixDupNames(items, when) {
+  const seen = new Set(), changed = [];
+  items.slice().sort((a, b) => (when(a) || '').localeCompare(when(b) || '')).forEach(x => {
+    const k = nameKey(x.label);
+    if (seen.has(k)) { const n = uniqName(x.label, new Set([...seen, ...items.map(y => nameKey(y.label))])); changed.push([x, x.label]); x.label = n; seen.add(nameKey(n)); } else seen.add(k);
+  });
+  return changed;
+}
+const dupCount = items => { const m = new Map(); items.forEach(x => m.set(nameKey(x.label), (m.get(nameKey(x.label)) || 0) + 1)); return [...m.values()].filter(n => n > 1).reduce((a, n) => a + n - 1, 0); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const nf1 = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const nf0 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
@@ -116,12 +135,22 @@ function dlg(o) {
   });
 }
 const ask = (title, text, ok = 'Aceptar', danger = false) => dlg({ title, text, ok, danger }).then(v => v === true);
+// o.validate(v) → null si vale, o { msg, sug } para avisar debajo del campo (y ofrecer un nombre que sí vale)
+function fieldErr(b, id, e) {
+  const el = b.querySelector('#' + id); if (!el) return;
+  el.hidden = !e; if (!e) return;
+  el.innerHTML = esc(e.msg) + (e.sug ? ` <button type="button" class="lnk" data-sug="${esc(e.sug)}">Usar «${esc(e.sug)}»</button>` : '');
+  const bt = el.querySelector('[data-sug]'); if (bt) bt.onclick = () => { const inp = el.parentNode.querySelector('input'); inp.value = bt.dataset.sug; el.hidden = true; inp.focus(); };
+}
 const prompt2 = (title, value = '', o = {}) => dlg({
   title, text: o.text, ok: o.ok || 'Guardar', focus: true,
-  html: `<input class="inp" id="pv" type="text" value="${esc(value)}" placeholder="${esc(o.ph || '')}" maxlength="${o.max || 80}" autocomplete="off" enterkeyhint="done">`,
-  open: (b, close) => b.querySelector('#pv').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); close(b.querySelector('#pv').value); } }),
-  check: b => b.querySelector('#pv').value
+  html: `<div><input class="inp" id="pv" type="text" value="${esc(value)}" placeholder="${esc(o.ph || '')}" maxlength="${o.max || 80}" autocomplete="off" enterkeyhint="done"><p class="ferr" id="pvE" role="alert" hidden></p></div>`,
+  open: (b, close) => { const inp = b.querySelector('#pv');
+    inp.addEventListener('input', () => fieldErr(b, 'pvE', null));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = inp.value, er = o.validate && o.validate(v); if (er) fieldErr(b, 'pvE', er); else close(v); } }); },
+  check: b => { const v = b.querySelector('#pv').value, er = o.validate && o.validate(v); if (er) { fieldErr(b, 'pvE', er); return undefined; } return v; }
 });
+const destNameErr = except => v => { const t = (v || '').trim(); if (t && destNames(except).has(nameKey(t))) return { msg: `Ya tienes un destino llamado «${(D.clients.find(c => c !== except && nameKey(c.label) === nameKey(t)) || {}).label || t}». Ponle otro nombre para distinguirlos.`, sug: uniqName(t, destNames(except)) }; return null; };
 function sheet(o) {
   return new Promise(res => {
     openLayer(`<div class="ov"></div><div class="am" role="dialog" aria-modal="true">${o.title ? `<div class="amh"><b>${esc(o.title)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</div>` : ''}${o.items.filter(Boolean).map((it, i) => `<button class="amb ${it.danger ? 'dg' : ''}" data-i="${i}">${ic(it.icon)}<span>${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('')}</div>`, res);

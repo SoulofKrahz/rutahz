@@ -21,7 +21,7 @@ jobs:
           node-version: 22
       - name: Instalar Playwright y Chromium
         run: npm i --no-save --no-audit --no-fund playwright@1.55.0 && npx playwright install --with-deps chromium
-      - name: Probar la app (15 pruebas en móvil y PC)
+      - name: Probar la app (16 pruebas en móvil y PC)
         run: node tests/suite.cjs
   deploy:
     name: Publicar

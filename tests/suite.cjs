@@ -301,6 +301,42 @@ test('iPhone: instalar antes de empezar', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6h · Nombres únicos: jornadas y destinos */
+test('nombres sin repetir', async ({ browser, base }) => {
+  const A = P(39.7217, 2.9106, 'Casa de M.', 'c1'), td = new Date(), iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}-${String(td.getDate()).padStart(2, '0')}`;
+  const name = 'Ruta del ' + td.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' });
+  const d = data({ clients: [{ id: 'c1', ...A }], hist: [day('h1', iso, [{ ...A }], { label: name })],
+    cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 's1', ...P(39.5694, 3.2085, 'Casa de M.') }], notes: '', ret: true } });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(400);
+  await p.click('#bSave'); await p.waitForSelector('#jn');
+  ok(await p.inputValue('#jn') === name + ' (2)', 'el nombre automático no repite el de otra jornada del mismo día → ' + await p.inputValue('#jn'));
+  await p.fill('#jn', name.toUpperCase()); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(200);
+  if (process.env.SHOT) { await p.waitForTimeout(400); await p.screenshot({ path: process.env.SHOT }); }
+  ok(await p.isVisible('#jnE') && await p.isVisible('.dlg'), 'con el mismo nombre (aunque cambien mayúsculas) no deja guardar y lo explica');
+  await p.click('#jnE [data-sug]'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.hist.length === 2 && new Set(__rz.D.hist.map(j => j.label.toLowerCase())).size === 2), 'con el nombre propuesto se guarda → ' + await p.evaluate(() => __rz.D.hist.map(j => j.label).join(' | ')));
+  // destinos
+  await p.click('.bb button[data-v="dest"]'); await p.click('#bDestNew'); await p.click('#ndMap'); await p.waitForTimeout(500); await p.click('#pickOk'); await p.waitForSelector('#pv');
+  await p.fill('#pv', 'casa de m.'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(200);
+  ok(await p.isVisible('#pvE'), 'un destino nuevo no puede llamarse como otro');
+  await p.click('#pvE [data-sug]'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.clients.map(c => c.label.toLowerCase()).join('|')) === 'casa de m.|casa de m. (2)', 'se guarda con el nombre propuesto');
+  await p.click('.dr:has-text("(2)") .bd'); await p.click('.amb:has-text("Cambiar nombre")'); await p.fill('#pv', 'Casa de M.'); await p.click('.dlg .acts button:has-text("Guardar")'); await p.waitForTimeout(200);
+  ok(await p.isVisible('#pvE'), 'al cambiar el nombre tampoco deja repetir');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  // datos antiguos con repetidos: botón Arreglar
+  await p.evaluate(() => { __rz.D.hist.push({ ...JSON.parse(JSON.stringify(__rz.D.hist[0])), id: 'h9', iso: '2026-01-05' }); __rz.D.clients.push({ id: 'c9', lat: 39.1, lon: 3.1, label: 'Casa de M.', at: '2026-11-03' }); });
+  await p.click('.bb button[data-v="hist"]'); await p.waitForTimeout(200);
+  ok(await p.isVisible('#bDupH'), 'el Historial avisa de nombres repetidos que ya había');
+  await p.click('#bDupH'); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => new Set(__rz.D.hist.map(j => j.label.toLowerCase())).size === __rz.D.hist.length) && !(await p.isVisible('#bDupH')), '«Arreglar» deja todos los nombres distintos');
+  await p.click('.bb button[data-v="dest"]'); await p.click('#bDupD'); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => new Set(__rz.D.clients.map(c => c.label.toLowerCase())).size === __rz.D.clients.length), 'y en Destinos igual');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

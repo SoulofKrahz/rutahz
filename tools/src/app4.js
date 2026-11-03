@@ -172,8 +172,10 @@ function importBackup(obj) {
   const newH = hist.filter(j => !have.has(String(j.id)));
   // clientes: por id o por posición (mismo sitio = mismo cliente)
   const idMap = new Map(); let newC = 0;
-  clients.forEach(c => { const ex = D.clients.find(x => x.id === c.id) || D.clients.find(x => near(x, c)); if (ex) idMap.set(c.id, ex.id); else { D.clients.push(c); newC++; } });
+  clients.forEach(c => { const ex = D.clients.find(x => x.id === c.id) || D.clients.find(x => near(x, c)); if (ex) idMap.set(c.id, ex.id); else { c.label = uniqName(c.label, destNames()); D.clients.push(c); newC++; } });
   newH.forEach(j => j.stops.forEach(s => { if (s.cid && idMap.has(s.cid)) s.cid = idMap.get(s.cid); }));
+  // nombres que chocan con los que ya tenías: se numeran para no confundirlas
+  let ren = 0; { const t = histNames(); newH.forEach(j => { const n = uniqName(j.label, t); if (n !== j.label) { j.label = n; ren++; } t.add(nameKey(n)); }); }
   D.hist.push(...newH);
   if (!D.fav && fav) D.fav = fav;
   if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); ['al', 'tf', 'pm'].forEach(k => { if (num(set[k]) != null) D.set[k] = num(set[k]); }); }
@@ -181,7 +183,7 @@ function importBackup(obj) {
   if (!D.cur.start && D.fav) D.cur.start = { ...D.fav, time: '' };
   if (fresh && prefs && typeof prefs === 'object') { ['th', 'fs', 'hc', 'rm', 'mc'].forEach(k => { if (prefs[k] != null) P[k] = prefs[k]; }); if (prefs.ah != null) { P.ah = prefs.ah; P.as = prefs.as; } saveP(); rzApply(P.ah, P.as); applyTheme(P.th || 'auto'); document.documentElement.style.setProperty('--fs', P.fs || 1); document.documentElement.classList.toggle('hc', !!P.hc); document.documentElement.classList.toggle('mapc', !!P.mc); renderAccent(); syncA11y(); }
   flush(); syncSettings(); renderAll(); applyScope(); recalc();
-  return { h: newH.length, c: newC, dup: hist.length - newH.length };
+  return { h: newH.length, c: newC, dup: hist.length - newH.length, ren };
 }
 $('#bkIn').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -192,7 +194,7 @@ $('#bkIn').onchange = e => {
     let obj; try { obj = JSON.parse(rd.result); } catch (err) { return dlg({ title: 'No es una copia válida', text: 'El archivo no se puede leer. Elige el .json que guardaste con «Guardar copia».', acts: [{ t: 'Entendido', v: null }] }); }
     try {
       const r = importBackup(obj);
-      dlg({ title: 'Copia restaurada', text: `${r.h} jornada${r.h === 1 ? '' : 's'} nueva${r.h === 1 ? '' : 's'}${r.c ? ` y ${r.c} cliente${r.c === 1 ? '' : 's'}` : ''}.${r.dup ? `\n${r.dup} ya las tenías y no se han duplicado.` : ''}${D.hist.some(est) ? '\n\nAlgunas jornadas tienen la distancia estimada: puedes recalcularlas en el Historial.' : ''}`, acts: [{ t: 'Ver historial', v: 'h', cls: 'g' }, { t: 'Listo', v: null }] }).then(v => { if (v === 'h') setView('hist'); });
+      dlg({ title: 'Copia restaurada', text: `${r.h} jornada${r.h === 1 ? '' : 's'} nueva${r.h === 1 ? '' : 's'}${r.c ? ` y ${r.c} cliente${r.c === 1 ? '' : 's'}` : ''}.${r.dup ? `\n${r.dup} ya las tenías y no se han duplicado.` : ''}${r.ren ? `\n${r.ren} tenía${r.ren > 1 ? 'n' : ''} el mismo nombre que otra tuya: se les ha añadido (2), (3)…` : ''}${D.hist.some(est) ? '\n\nAlgunas jornadas tienen la distancia estimada: puedes recalcularlas en el Historial.' : ''}`, acts: [{ t: 'Ver historial', v: 'h', cls: 'g' }, { t: 'Listo', v: null }] }).then(v => { if (v === 'h') setView('hist'); });
     } catch (err) { dlg({ title: 'No es una copia de Rutahz', text: 'El archivo no tiene el formato de una copia de Rutahz (ni de la versión anterior).', acts: [{ t: 'Entendido', v: null }] }); }
   };
   rd.readAsText(f);
@@ -259,6 +261,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [
+    'Dos jornadas o dos destinos ya no pueden llamarse igual. Si ya existe, Rutahz te avisa y te propone otro nombre, por ejemplo «Ruta del 3 de noviembre (2)».',
+    'El nombre automático de la jornada sigue a la fecha que elijas.',
+    'Si ya tenías nombres repetidos, el Historial y Destinos te ofrecen <b>Arreglar</b> (con deshacer).'] },
   { v: '2026-11-02-15', d: '2026-11-02', t: 'iPhone: instalar sin repetir pasos', i: [
     'Al abrirla en Safari por primera vez, Rutahz explica que hay que instalarla antes de crear el PIN y restaurar la copia: en iPhone, Safari y la app instalada no comparten datos.',
     'Si ya tienes datos en Safari, el aviso de instalar te ofrece guardar antes la copia para restaurarla dentro de la app.'] },

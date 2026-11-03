@@ -251,9 +251,9 @@ function toggleClient(s) {
     save(); renderRuta(); renderAjustesLists();
     toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
   } else {
-    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Destino', addr: s.label || '', at: today() };
-    D.clients.push(c); s.cid = c.id; save(); renderRuta(); renderAjustesLists();
-    toast(`Guardado en tus destinos: ${c.label}`);
+    const lb = uniqName(s.label || 'Destino', destNames()), c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
+    D.clients.push(c); s.cid = c.id; if (lb !== (s.label || 'Destino')) s.label = lb; save(); renderRuta(); renderAjustesLists();
+    toast(lb !== c.addr ? `Guardado como «${lb}»: ya tenías un destino con ese nombre` : `Guardado en tus destinos: ${c.label}`, { ms: 4000 });
   }
 }
 function stopMenu(s) {
@@ -373,6 +373,9 @@ function renderDest() {
   else if (dSort === 'near' && ref) list.sort((a, b) => hav(ref, a) - hav(ref, b));
   $('#destSub').textContent = D.clients.length ? `${D.clients.length} destino${D.clients.length > 1 ? 's' : ''}${dSort === 'near' && ref ? ' · por cercanía a «' + ref.label + '»' : ''}` : 'Los sitios que visitas: añádelos a la ruta en un toque';
   $$('#sgDs button').forEach(b => b.classList.toggle('on', b.dataset.v === dSort));
+  const nDup = dupCount(D.clients);
+  $('#destDup').innerHTML = nDup ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nDup} destino${nDup > 1 ? 's' : ''} con el nombre repetido: en la ruta y los informes no se distinguen. Al arreglarlo se les añade (2), (3)…; luego puedes ponerles un nombre mejor.</span><button class="btn sm" id="bDupD">Arreglar</button></div>` : '';
+  if (nDup) $('#bDupD').onclick = () => { const ch = fixDupNames(D.clients, c => (c.at || '') + c.id); D.cur.stops.forEach(s => { const c = s.cid && D.clients.find(x => x.id === s.cid); if (c) s.label = c.label; }); save(); renderDest(); renderRuta(); toast(`${ch.length} destino${ch.length > 1 ? 's' : ''} renombrado${ch.length > 1 ? 's' : ''}`, { undo: () => { ch.forEach(([c, l]) => c.label = l); save(); renderDest(); renderRuta(); } }); };
   const inRoute = new Set(D.cur.stops.map(s => clientOf(s)?.id).filter(Boolean));
   $('#destBar').innerHTML = dSel ? `<div class="dsel"><span>${dSel.length ? dSel.length + ' para la ruta, en este orden' : 'Toca los destinos en el orden de la visita'}</span><span class="brow" style="flex-wrap:nowrap"><button class="btn g sm" id="dsNo">Cancelar</button><button class="btn sm" id="dsOk" ${dSel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></span></div>`
     : (D.clients.length > 1 ? `<div style="display:flex;justify-content:flex-end"><button class="lnk" id="dsGo" style="font-size:.8125rem">Planificar: elegir varios</button></div>` : '');
@@ -418,7 +421,7 @@ function linkVisits(c, o) { const m = isOf(c, o); D.hist.forEach(j => j.stops.fo
 function openRoutes() { return [D.cur, D.edit && D.edit.prevCur].filter(Boolean); }
 function histWith(c, o) { const m = isOf(c, o); return D.hist.filter(j => j.stops.some(m) || near(j.start, o)); }
 async function renameDest(c) {
-  const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.' });
+  const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.', validate: destNameErr(c) });
   if (!nv || !nv.trim() || nv.trim() === c.label) return;
   const old = c.label, o = { lat: c.lat, lon: c.lon }, m = isOf(c, o); linkVisits(c, o);
   c.label = nv.trim(); openRoutes().forEach(r => r.stops.forEach(s => { if (m(s)) s.label = c.label; }));
@@ -489,9 +492,9 @@ function newDest() {
 async function newDestAt(lat, lon, addr) {
   const dup = D.clients.find(c => near(c, { lat, lon }));
   if (dup) { setView('dest'); return toast(`Ya tienes «${dup.label}» en ese sitio.`); }
-  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar' });
+  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar', validate: destNameErr(null) });
   if (name == null) return;
-  const c = { id: uid(), lat, lon, label: name.trim() || addr, addr, at: today() };
+  const c = { id: uid(), lat, lon, label: uniqName(name.trim() || addr, destNames()), addr, at: today() };
   D.clients.push(c); save(); setView('dest'); renderDest(); renderRuta();
   toast(`Guardado: ${c.label}`, { undo: () => { D.clients = D.clients.filter(x => x !== c); save(); renderDest(); renderRuta(); } });
 }

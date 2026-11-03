@@ -187,6 +187,7 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .gb.dg:hover{background:var(--dgt);color:var(--dg)}.gb:disabled{opacity:.28;pointer-events:none}.gb.on{color:#e3a008}.gb.on svg{fill:currentColor}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--tint);color:var(--em);font-size:.75rem;font-weight:600;white-space:nowrap}
 .gx{display:inline-flex;align-items:center;gap:3px;font-weight:600;color:var(--em)}.gx svg{width:12px;height:12px}.gx.w{color:var(--wn)}
+.ferr{margin:6px 0 0;font-size:.8125rem;line-height:1.45;color:var(--wn)}.ferr .lnk{font-size:inherit;font-weight:600}
 .chip svg{width:13px;height:13px}.chip.w{background:var(--wnt);color:var(--wn)}.chip.m{background:color-mix(in srgb,var(--mu) 14%,transparent);color:var(--mu)}
 .fm{font-size:.8125rem;line-height:1.45;padding:10px 12px;border-radius:12px;background:var(--tint);color:var(--tx)}.fm.w{background:var(--wnt)}.fm.e{background:var(--dgt)}
 .fm b{font-weight:650}
@@ -619,6 +620,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="dq" type="search" placeholder="Buscar en tus destinos" autocomplete="off" aria-label="Buscar en tus destinos"></div>
       <div class="seg" id="sgDs"><button data-v="vis" class="on">Visitas</button><button data-v="az">A-Z</button><button data-v="rec">Recientes</button><button data-v="near">Cerca</button></div>
       <div id="destBar"></div>
+      <div id="destDup"></div>
       <div id="destList" class="card" style="padding:4px 14px"></div>
       <p class="hint" style="text-align:center">Consejo: si son domicilios de pacientes, puedes usar iniciales o un código en vez del nombre completo.</p>
     </section>
@@ -631,6 +633,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <div class="vh"><div><h1>Historial</h1><p id="histSub"></p></div><button class="btn o sm" id="bExport"><svg class="i"><use href="#i-file"/></svg>Informe</button></div>
       <div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="hq" type="search" placeholder="Buscar por jornada, cliente o nota" autocomplete="off" aria-label="Buscar en el historial"></div>
       <div id="histF" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div id="histDup"></div>
       <div id="recalcBox"></div>
       <div id="histList" style="display:flex;flex-direction:column;gap:10px"></div>
       <p class="hint" style="text-align:center;margin-top:8px">Herramienta personal de seguimiento de kilometraje. No es un registro oficial ante la Agencia Tributaria ni otros organismos.</p>
@@ -740,13 +743,32 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-02-15';
+const VER = '2026-11-03-1';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const ic = (n, c = '') => `<svg class="i ${c}"><use href="#i-${n}"/></svg>`;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+// Nombres únicos (jornadas y destinos): se comparan sin mayúsculas, acentos ni espacios de más
+const nameKey = s => norm(String(s || '')).replace(/\s+/g, ' ');
+function uniqName(base, taken) {
+  base = String(base || '').replace(/\s+/g, ' ').trim(); if (!taken.has(nameKey(base))) return base;
+  const b = base.replace(/\s*\(\d+\)$/, '');
+  for (let i = 2; ; i++) { const n = `${b} (${i})`; if (!taken.has(nameKey(n))) return n; }
+}
+const histNames = exceptId => new Set(D.hist.filter(j => j.id !== exceptId).map(j => nameKey(j.label)));
+const destNames = except => new Set(D.clients.filter(c => c !== except).map(c => nameKey(c.label)));
+// Grupos con el mismo nombre: deja el primero (el más antiguo) y numera los demás
+function fixDupNames(items, when) {
+  const seen = new Set(), changed = [];
+  items.slice().sort((a, b) => (when(a) || '').localeCompare(when(b) || '')).forEach(x => {
+    const k = nameKey(x.label);
+    if (seen.has(k)) { const n = uniqName(x.label, new Set([...seen, ...items.map(y => nameKey(y.label))])); changed.push([x, x.label]); x.label = n; seen.add(nameKey(n)); } else seen.add(k);
+  });
+  return changed;
+}
+const dupCount = items => { const m = new Map(); items.forEach(x => m.set(nameKey(x.label), (m.get(nameKey(x.label)) || 0) + 1)); return [...m.values()].filter(n => n > 1).reduce((a, n) => a + n - 1, 0); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const nf1 = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const nf0 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
@@ -854,12 +876,22 @@ function dlg(o) {
   });
 }
 const ask = (title, text, ok = 'Aceptar', danger = false) => dlg({ title, text, ok, danger }).then(v => v === true);
+// o.validate(v) → null si vale, o { msg, sug } para avisar debajo del campo (y ofrecer un nombre que sí vale)
+function fieldErr(b, id, e) {
+  const el = b.querySelector('#' + id); if (!el) return;
+  el.hidden = !e; if (!e) return;
+  el.innerHTML = esc(e.msg) + (e.sug ? ` <button type="button" class="lnk" data-sug="${esc(e.sug)}">Usar «${esc(e.sug)}»</button>` : '');
+  const bt = el.querySelector('[data-sug]'); if (bt) bt.onclick = () => { const inp = el.parentNode.querySelector('input'); inp.value = bt.dataset.sug; el.hidden = true; inp.focus(); };
+}
 const prompt2 = (title, value = '', o = {}) => dlg({
   title, text: o.text, ok: o.ok || 'Guardar', focus: true,
-  html: `<input class="inp" id="pv" type="text" value="${esc(value)}" placeholder="${esc(o.ph || '')}" maxlength="${o.max || 80}" autocomplete="off" enterkeyhint="done">`,
-  open: (b, close) => b.querySelector('#pv').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); close(b.querySelector('#pv').value); } }),
-  check: b => b.querySelector('#pv').value
+  html: `<div><input class="inp" id="pv" type="text" value="${esc(value)}" placeholder="${esc(o.ph || '')}" maxlength="${o.max || 80}" autocomplete="off" enterkeyhint="done"><p class="ferr" id="pvE" role="alert" hidden></p></div>`,
+  open: (b, close) => { const inp = b.querySelector('#pv');
+    inp.addEventListener('input', () => fieldErr(b, 'pvE', null));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = inp.value, er = o.validate && o.validate(v); if (er) fieldErr(b, 'pvE', er); else close(v); } }); },
+  check: b => { const v = b.querySelector('#pv').value, er = o.validate && o.validate(v); if (er) { fieldErr(b, 'pvE', er); return undefined; } return v; }
 });
+const destNameErr = except => v => { const t = (v || '').trim(); if (t && destNames(except).has(nameKey(t))) return { msg: `Ya tienes un destino llamado «${(D.clients.find(c => c !== except && nameKey(c.label) === nameKey(t)) || {}).label || t}». Ponle otro nombre para distinguirlos.`, sug: uniqName(t, destNames(except)) }; return null; };
 function sheet(o) {
   return new Promise(res => {
     openLayer(`<div class="ov"></div><div class="am" role="dialog" aria-modal="true">${o.title ? `<div class="amh"><b>${esc(o.title)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</div>` : ''}${o.items.filter(Boolean).map((it, i) => `<button class="amb ${it.danger ? 'dg' : ''}" data-i="${i}">${ic(it.icon)}<span>${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('')}</div>`, res);
@@ -1212,9 +1244,9 @@ function toggleClient(s) {
     save(); renderRuta(); renderAjustesLists();
     toast(`«${cl.label}» ya no está en tus destinos`, { undo: () => { D.clients.splice(idx, 0, cl); D.cur.stops.forEach(x => { if (near(x, cl)) x.cid = cl.id; }); save(); renderRuta(); renderAjustesLists(); } });
   } else {
-    const c = { id: uid(), lat: s.lat, lon: s.lon, label: s.label || 'Destino', addr: s.label || '', at: today() };
-    D.clients.push(c); s.cid = c.id; save(); renderRuta(); renderAjustesLists();
-    toast(`Guardado en tus destinos: ${c.label}`);
+    const lb = uniqName(s.label || 'Destino', destNames()), c = { id: uid(), lat: s.lat, lon: s.lon, label: lb, addr: s.label || '', at: today() };
+    D.clients.push(c); s.cid = c.id; if (lb !== (s.label || 'Destino')) s.label = lb; save(); renderRuta(); renderAjustesLists();
+    toast(lb !== c.addr ? `Guardado como «${lb}»: ya tenías un destino con ese nombre` : `Guardado en tus destinos: ${c.label}`, { ms: 4000 });
   }
 }
 function stopMenu(s) {
@@ -1334,6 +1366,9 @@ function renderDest() {
   else if (dSort === 'near' && ref) list.sort((a, b) => hav(ref, a) - hav(ref, b));
   $('#destSub').textContent = D.clients.length ? `${D.clients.length} destino${D.clients.length > 1 ? 's' : ''}${dSort === 'near' && ref ? ' · por cercanía a «' + ref.label + '»' : ''}` : 'Los sitios que visitas: añádelos a la ruta en un toque';
   $$('#sgDs button').forEach(b => b.classList.toggle('on', b.dataset.v === dSort));
+  const nDup = dupCount(D.clients);
+  $('#destDup').innerHTML = nDup ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nDup} destino${nDup > 1 ? 's' : ''} con el nombre repetido: en la ruta y los informes no se distinguen. Al arreglarlo se les añade (2), (3)…; luego puedes ponerles un nombre mejor.</span><button class="btn sm" id="bDupD">Arreglar</button></div>` : '';
+  if (nDup) $('#bDupD').onclick = () => { const ch = fixDupNames(D.clients, c => (c.at || '') + c.id); D.cur.stops.forEach(s => { const c = s.cid && D.clients.find(x => x.id === s.cid); if (c) s.label = c.label; }); save(); renderDest(); renderRuta(); toast(`${ch.length} destino${ch.length > 1 ? 's' : ''} renombrado${ch.length > 1 ? 's' : ''}`, { undo: () => { ch.forEach(([c, l]) => c.label = l); save(); renderDest(); renderRuta(); } }); };
   const inRoute = new Set(D.cur.stops.map(s => clientOf(s)?.id).filter(Boolean));
   $('#destBar').innerHTML = dSel ? `<div class="dsel"><span>${dSel.length ? dSel.length + ' para la ruta, en este orden' : 'Toca los destinos en el orden de la visita'}</span><span class="brow" style="flex-wrap:nowrap"><button class="btn g sm" id="dsNo">Cancelar</button><button class="btn sm" id="dsOk" ${dSel.length ? '' : 'disabled'}>${ic('plus')}Añadir</button></span></div>`
     : (D.clients.length > 1 ? `<div style="display:flex;justify-content:flex-end"><button class="lnk" id="dsGo" style="font-size:.8125rem">Planificar: elegir varios</button></div>` : '');
@@ -1379,7 +1414,7 @@ function linkVisits(c, o) { const m = isOf(c, o); D.hist.forEach(j => j.stops.fo
 function openRoutes() { return [D.cur, D.edit && D.edit.prevCur].filter(Boolean); }
 function histWith(c, o) { const m = isOf(c, o); return D.hist.filter(j => j.stops.some(m) || near(j.start, o)); }
 async function renameDest(c) {
-  const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.' });
+  const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.', validate: destNameErr(c) });
   if (!nv || !nv.trim() || nv.trim() === c.label) return;
   const old = c.label, o = { lat: c.lat, lon: c.lon }, m = isOf(c, o); linkVisits(c, o);
   c.label = nv.trim(); openRoutes().forEach(r => r.stops.forEach(s => { if (m(s)) s.label = c.label; }));
@@ -1450,9 +1485,9 @@ function newDest() {
 async function newDestAt(lat, lon, addr) {
   const dup = D.clients.find(c => near(c, { lat, lon }));
   if (dup) { setView('dest'); return toast(`Ya tienes «${dup.label}» en ese sitio.`); }
-  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar' });
+  const name = await prompt2('Nombre del destino', addr, { text: 'Por ejemplo «Casa de M.» o un código. La dirección se guarda aparte.', ok: 'Guardar', validate: destNameErr(null) });
   if (name == null) return;
-  const c = { id: uid(), lat, lon, label: name.trim() || addr, addr, at: today() };
+  const c = { id: uid(), lat, lon, label: uniqName(name.trim() || addr, destNames()), addr, at: today() };
   D.clients.push(c); save(); setView('dest'); renderDest(); renderRuta();
   toast(`Guardado: ${c.label}`, { undo: () => { D.clients = D.clients.filter(x => x !== c); save(); renderDest(); renderRuta(); } });
 }
@@ -1620,16 +1655,24 @@ function askDetails(label, iso, durM) {
   return dlg({
     title: D.edit ? 'Guardar cambios' : 'Guardar jornada', ok: 'Guardar',
     text: `${fmtKm(R.km)} · ${D.cur.stops.length} parada${D.cur.stops.length > 1 ? 's' : ''}${D.cur.ret ? ' · con vuelta' : ''}${R.src === 'straight' ? '\nSin conexión: la distancia es estimada. Podrás recalcularla desde el historial.' : ''}`,
-    html: `<div><label class="lb" for="jn">Nombre</label><input class="inp" id="jn" type="text" maxlength="80" value="${esc(label)}" enterkeyhint="done"></div>
+    html: `<div><label class="lb" for="jn">Nombre</label><input class="inp" id="jn" type="text" maxlength="80" value="${esc(label)}" enterkeyhint="done"><p class="ferr" id="jnE" role="alert" hidden></p></div>
       <div><label class="lb" for="jd">Fecha de la jornada</label><input class="inp" id="jd" type="date" value="${esc(iso)}" max="${today()}">
       <div class="brow" style="margin-top:8px"><button class="btn g sm" data-d="${today()}">Hoy</button><button class="btn g sm" data-d="${isoOf(y)}">Ayer</button></div></div>
       <div><label class="lb">Tiempo real al volante <span style="font-weight:500">(opcional)</span></label>${durHtml('jt', durM)}<p class="hint" style="margin-top:6px">Estimado: <b>${fmtDur(R.dur)}</b>. Si sabes el tiempo real, anótalo: es el que saldrá en los informes.</p></div>`,
-    open: b => b.querySelectorAll('[data-d]').forEach(x => x.onclick = () => { b.querySelector('#jd').value = x.dataset.d; }),
+    open: b => {
+      // si el nombre es el automático, sigue a la fecha («Ruta del 2 de noviembre», sin repetir)
+      const jn = b.querySelector('#jn'), jd = b.querySelector('#jd'); let auto = jn.value;
+      const onDate = () => { if (jn.value === auto && /^Ruta del /.test(auto)) { auto = uniqName(defaultName(jd.value || today()), histNames(D.edit && D.edit.snap.id)); jn.value = auto; fieldErr(b, 'jnE', null); } };
+      b.querySelectorAll('[data-d]').forEach(x => x.onclick = () => { jd.value = x.dataset.d; onDate(); });
+      jd.addEventListener('change', onDate); jn.addEventListener('input', () => fieldErr(b, 'jnE', null));
+    },
     check: b => {
+      const nm = (b.querySelector('#jn').value.trim() || label), taken = histNames(D.edit && D.edit.snap.id);
+      if (taken.has(nameKey(nm))) { const o = D.hist.find(j => nameKey(j.label) === nameKey(nm) && !(D.edit && j.id === D.edit.snap.id)); fieldErr(b, 'jnE', { msg: `Ya tienes una jornada llamada «${o ? o.label : nm}»${o && o.iso ? ' (' + fmtDate(o.iso, { day: 'numeric', month: 'short' }) + ')' : ''}. Ponle otro nombre para no confundirlas en los informes.`, sug: uniqName(nm, taken) }); return undefined; }
       const d = b.querySelector('#jd').value || today();
       if (d > today()) { toast('La fecha no puede ser futura.'); return undefined; }
       const t = readDur(b, 'jt'); if (t === undefined) { toast('Revisa el tiempo real: entre 1 minuto y 23 h 59 min.'); return undefined; }
-      return { label: b.querySelector('#jn').value.trim() || label, iso: d, durM: t };
+      return { label: nm, iso: d, durM: t };
     }
   });
 }
@@ -1637,7 +1680,7 @@ function defaultName(iso) { return 'Ruta del ' + dOf(iso).toLocaleDateString('es
 $('#bSave').onclick = async () => {
   if (!D.cur.start || !D.cur.stops.length) return;
   await recalc();
-  const det = await askDetails(defaultName(today()), today()); if (!det) return;
+  const det = await askDetails(uniqName(defaultName(today()), histNames()), today()); if (!det) return;
   const e = entryFromCur(det); D.hist.push(e);
   D.cur = newCur(); R = R0();
   save(); renderRuta(); renderHist(); renderStats(); renderChip(); maybeBanner();
@@ -1735,6 +1778,9 @@ function renderHist() {
   const fl = hF === 'pend' ? all.filter(pendingExp) : hF === 'chg' ? all.filter(j => expOf(j) === 'chg') : all;
   const list = q ? fl.filter(j => norm(j.label).includes(q) || norm(j.notes).includes(q) || j.stops.some(s => norm(s.label).includes(q))) : fl;
   $('#histSub').textContent = D.hist.length ? `${D.hist.length} jornada${D.hist.length > 1 ? 's' : ''} · ${fmtKm0(D.hist.reduce((a, j) => a + (j.tot.road || 0), 0))}` : '';
+  const nDup = dupCount(D.hist);
+  $('#histDup').innerHTML = nDup ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nDup} jornada${nDup > 1 ? 's' : ''} con el nombre repetido. Al arreglarlo se les añade (2), (3)… a las más recientes.</span><button class="btn sm" id="bDupH">Arreglar</button></div>` : '';
+  if (nDup) $('#bDupH').onclick = () => { const ch = fixDupNames(D.hist, j => (j.iso || '') + String(j.id)); save(); renderHist(); renderStats(); toast(`${ch.length} nombre${ch.length > 1 ? 's' : ''} cambiado${ch.length > 1 ? 's' : ''}`, { undo: () => { ch.forEach(([j, l]) => j.label = l); save(); renderHist(); renderStats(); } }); };
   const nEst = D.hist.filter(est).length;
   $('#recalcBox').innerHTML = nEst ? `<div class="fm w" style="display:flex;align-items:center;gap:10px"><span style="flex:1">${nEst} jornada${nEst > 1 ? 's' : ''} con distancia estimada (sin conexión al guardar).</span><button class="btn sm" id="bRecalcAll">${ic('refresh')}Recalcular</button></div>` : '';
   if (nEst) $('#bRecalcAll').onclick = () => recalcEntries(D.hist.filter(est));
@@ -2169,8 +2215,10 @@ function importBackup(obj) {
   const newH = hist.filter(j => !have.has(String(j.id)));
   // clientes: por id o por posición (mismo sitio = mismo cliente)
   const idMap = new Map(); let newC = 0;
-  clients.forEach(c => { const ex = D.clients.find(x => x.id === c.id) || D.clients.find(x => near(x, c)); if (ex) idMap.set(c.id, ex.id); else { D.clients.push(c); newC++; } });
+  clients.forEach(c => { const ex = D.clients.find(x => x.id === c.id) || D.clients.find(x => near(x, c)); if (ex) idMap.set(c.id, ex.id); else { c.label = uniqName(c.label, destNames()); D.clients.push(c); newC++; } });
   newH.forEach(j => j.stops.forEach(s => { if (s.cid && idMap.has(s.cid)) s.cid = idMap.get(s.cid); }));
+  // nombres que chocan con los que ya tenías: se numeran para no confundirlas
+  let ren = 0; { const t = histNames(); newH.forEach(j => { const n = uniqName(j.label, t); if (n !== j.label) { j.label = n; ren++; } t.add(nameKey(n)); }); }
   D.hist.push(...newH);
   if (!D.fav && fav) D.fav = fav;
   if (fresh && set) { if (num(set.cpk) != null) D.set.cpk = num(set.cpk); if (num(set.rf) != null) D.set.rf = num(set.rf); D.set.unl = !!set.unl; ['ret', 'shN', 'shM', 'shT'].forEach(k => { if (typeof set[k] === 'boolean') D.set[k] = set[k]; }); ['al', 'tf', 'pm'].forEach(k => { if (num(set[k]) != null) D.set[k] = num(set[k]); }); }
@@ -2178,7 +2226,7 @@ function importBackup(obj) {
   if (!D.cur.start && D.fav) D.cur.start = { ...D.fav, time: '' };
   if (fresh && prefs && typeof prefs === 'object') { ['th', 'fs', 'hc', 'rm', 'mc'].forEach(k => { if (prefs[k] != null) P[k] = prefs[k]; }); if (prefs.ah != null) { P.ah = prefs.ah; P.as = prefs.as; } saveP(); rzApply(P.ah, P.as); applyTheme(P.th || 'auto'); document.documentElement.style.setProperty('--fs', P.fs || 1); document.documentElement.classList.toggle('hc', !!P.hc); document.documentElement.classList.toggle('mapc', !!P.mc); renderAccent(); syncA11y(); }
   flush(); syncSettings(); renderAll(); applyScope(); recalc();
-  return { h: newH.length, c: newC, dup: hist.length - newH.length };
+  return { h: newH.length, c: newC, dup: hist.length - newH.length, ren };
 }
 $('#bkIn').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -2189,7 +2237,7 @@ $('#bkIn').onchange = e => {
     let obj; try { obj = JSON.parse(rd.result); } catch (err) { return dlg({ title: 'No es una copia válida', text: 'El archivo no se puede leer. Elige el .json que guardaste con «Guardar copia».', acts: [{ t: 'Entendido', v: null }] }); }
     try {
       const r = importBackup(obj);
-      dlg({ title: 'Copia restaurada', text: `${r.h} jornada${r.h === 1 ? '' : 's'} nueva${r.h === 1 ? '' : 's'}${r.c ? ` y ${r.c} cliente${r.c === 1 ? '' : 's'}` : ''}.${r.dup ? `\n${r.dup} ya las tenías y no se han duplicado.` : ''}${D.hist.some(est) ? '\n\nAlgunas jornadas tienen la distancia estimada: puedes recalcularlas en el Historial.' : ''}`, acts: [{ t: 'Ver historial', v: 'h', cls: 'g' }, { t: 'Listo', v: null }] }).then(v => { if (v === 'h') setView('hist'); });
+      dlg({ title: 'Copia restaurada', text: `${r.h} jornada${r.h === 1 ? '' : 's'} nueva${r.h === 1 ? '' : 's'}${r.c ? ` y ${r.c} cliente${r.c === 1 ? '' : 's'}` : ''}.${r.dup ? `\n${r.dup} ya las tenías y no se han duplicado.` : ''}${r.ren ? `\n${r.ren} tenía${r.ren > 1 ? 'n' : ''} el mismo nombre que otra tuya: se les ha añadido (2), (3)…` : ''}${D.hist.some(est) ? '\n\nAlgunas jornadas tienen la distancia estimada: puedes recalcularlas en el Historial.' : ''}`, acts: [{ t: 'Ver historial', v: 'h', cls: 'g' }, { t: 'Listo', v: null }] }).then(v => { if (v === 'h') setView('hist'); });
     } catch (err) { dlg({ title: 'No es una copia de Rutahz', text: 'El archivo no tiene el formato de una copia de Rutahz (ni de la versión anterior).', acts: [{ t: 'Entendido', v: null }] }); }
   };
   rd.readAsText(f);
@@ -2256,6 +2304,10 @@ document.addEventListener('visibilitychange', () => {
 /* =================== Novedades =================== */
 // La más reciente arriba. v = versión en la que llegó (formato de VER). Texto llano, pensado para quien usa la app.
 const NEWS = [
+  { v: '2026-11-03-1', d: '2026-11-03', t: 'Sin nombres repetidos', i: [
+    'Dos jornadas o dos destinos ya no pueden llamarse igual. Si ya existe, Rutahz te avisa y te propone otro nombre, por ejemplo «Ruta del 3 de noviembre (2)».',
+    'El nombre automático de la jornada sigue a la fecha que elijas.',
+    'Si ya tenías nombres repetidos, el Historial y Destinos te ofrecen <b>Arreglar</b> (con deshacer).'] },
   { v: '2026-11-02-15', d: '2026-11-02', t: 'iPhone: instalar sin repetir pasos', i: [
     'Al abrirla en Safari por primera vez, Rutahz explica que hay que instalarla antes de crear el PIN y restaurar la copia: en iPhone, Safari y la app instalada no comparten datos.',
     'Si ya tienes datos en Safari, el aviso de instalar te ofrece guardar antes la copia para restaurarla dentro de la app.'] },
