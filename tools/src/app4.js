@@ -50,8 +50,8 @@ function renderAjustesLists() {
   cl.innerHTML = D.clients.length ? D.clients.slice().sort((a, b) => a.label.localeCompare(b.label, 'es')).map(c => `<div class="row" data-id="${c.id}"><div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Sin visitas guardadas'}</small></div><button class="gb rn" aria-label="Cambiar nombre de ${esc(c.label)}">${ic('edit')}</button><button class="gb dg rm" aria-label="Quitar ${esc(c.label)}">${ic('trash')}</button></div>`).join('') : '<p class="hint">Todavía no has guardado ninguno.</p>';
   cl.querySelectorAll('.row').forEach(r => {
     const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
-    r.querySelector('.rn').onclick = async () => { const v = await prompt2('Nombre del cliente', c.label, { text: 'Cambia también el nombre en las paradas de la ruta actual. El historial conserva el nombre de cada día, pero las visitas se siguen contando juntas.' }); if (v && v.trim()) { c.label = v.trim(); D.cur.stops.forEach(s => { if (s.cid === c.id) s.label = c.label; }); save(); renderAjustesLists(); renderRuta(); renderStats(); } };
-    r.querySelector('.rm').onclick = () => { const i = D.clients.indexOf(c); D.clients.splice(i, 1); save(); renderAjustesLists(); renderRuta(); toast(`«${c.label}» quitado de clientes`, { undo: () => { D.clients.splice(i, 0, c); save(); renderAjustesLists(); renderRuta(); } }); };
+    r.querySelector('.rn').onclick = () => renameDest(c).then(renderAjustesLists); // mismo flujo que en Destinos
+    r.querySelector('.rm').onclick = () => deleteDest(c);
   });
 }
 
@@ -264,6 +264,7 @@ const NEWS = [
   { v: '2026-11-03-3', d: '2026-11-03', t: 'Retoques al deslizar y al borrar destinos', i: [
     'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
     'Al guardar una parada en tus destinos (deslizando o desde «···»), te pide el nombre.',
+    'Corregir la ubicación o el nombre de un destino ya no cambia nada hasta que eliges: hay botón <b>Cancelar</b>, y cerrar el cuadro también cancela. Lo que eliges se puede deshacer.',
     'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },
   { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
     'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },

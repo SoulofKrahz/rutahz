@@ -419,7 +419,7 @@ function destMenu(c) {
     { icon: 'edit', label: 'Cambiar nombre', fn: () => renameDest(c) },
     { icon: 'pin', label: 'Corregir la ubicación', sub: 'Moviendo el mapa hasta el sitio exacto', fn: () => startPick('dest-move', c) },
     v.n && { icon: 'hist', label: 'Ver sus visitas', fn: () => destVisits(c) },
-    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia; en la ruta de hoy la parada vuelve a su dirección', danger: true, fn: () => { const i = D.clients.indexOf(c), back = detachDest(c); D.clients.splice(i, 1); save(); renderDest(); renderRuta(); drawMarkers(); toast(`«${c.label}» eliminado${back.n ? ', y en la ruta de hoy vuelve a su dirección' : ''}`, { ms: 5000, undo: () => { D.clients.splice(i, 0, c); back(); save(); renderDest(); renderRuta(); drawMarkers(); } }); } },
+    { icon: 'trash', label: 'Eliminar destino', sub: 'El historial no cambia; en la ruta de hoy la parada vuelve a su dirección', danger: true, fn: () => deleteDest(c) },
   ] });
 }
 /* ---- Cambios en un destino: qué se actualiza ----
@@ -434,35 +434,49 @@ function histWith(c, o) { const m = isOf(c, o); return D.hist.filter(j => j.stop
 async function renameDest(c) {
   const nv = await prompt2('Nombre del destino', c.label, { text: 'Cambia en la lista de destinos y en la ruta de hoy.', validate: destNameErr(c) });
   if (!nv || !nv.trim() || nv.trim() === c.label) return;
-  const old = c.label, o = { lat: c.lat, lon: c.lon }, m = isOf(c, o); linkVisits(c, o);
-  c.label = nv.trim(); openRoutes().forEach(r => r.stops.forEach(s => { if (m(s)) s.label = c.label; }));
-  save(); renderDest(); renderRuta(); renderStats();
-  const js = D.hist.filter(j => j.stops.some(s => s.cid === c.id && s.label !== c.label));
-  if (!js.length) return toast(`Ahora se llama «${c.label}»`);
-  const v = await dlg({ title: '¿Cambiar también el historial?', text: `En ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} aparece con otro nombre («${old}»). Si las cambias, los informes y el Excel saldrán con el nombre nuevo. Los km no cambian.`,
-    acts: [{ t: 'Dejar como están', cls: 'g', v: false }, { t: `Cambiar en ${js.length}`, v: true }] });
-  if (!v) return toast(`Ahora se llama «${c.label}». El historial no cambia.`);
-  const prev = []; js.forEach(j => j.stops.forEach(s => { if (s.cid === c.id) { prev.push([s, s.label]); s.label = c.label; } }));
-  save(); renderHist(); renderStats();
-  toast(`Nombre cambiado también en ${js.length} jornada${js.length > 1 ? 's' : ''}`, { undo: () => { prev.forEach(([s, l]) => s.label = l); save(); renderHist(); renderStats(); } });
+  const name = nv.trim(), old = c.label, o = { lat: c.lat, lon: c.lon }, m = isOf(c, o);
+  const js = D.hist.filter(j => j.stops.some(s => m(s) && s.label !== name));
+  let ans = 'now';
+  if (js.length) {
+    // Nada cambia hasta elegir: cerrar el cuadro es cancelar
+    ans = await dlg({ title: '¿Cambiar también el historial?', text: `«${old}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''}. Si las cambias, los informes y el Excel saldrán con el nombre nuevo («${name}»). Los km no cambian.${js.some(j => j.exp) ? ' Las ya exportadas saldrán como «cambiada tras exportar».' : ''}`,
+      acts: [{ t: 'Cancelar', cls: 'g', v: null }, { t: 'Solo el destino', cls: 'g', v: 'now' }, { t: `Cambiar en ${js.length}`, v: 'all' }] });
+    if (!ans) return toast(`Sin cambios: sigue llamándose «${old}».`);
+  }
+  linkVisits(c, o);
+  const prev = [];
+  openRoutes().forEach(r => r.stops.forEach(s => { if (m(s)) { prev.push([s, s.label]); s.label = name; } }));
+  if (ans === 'all') js.forEach(j => j.stops.forEach(s => { if (s.cid === c.id) { prev.push([s, s.label]); s.label = name; } }));
+  c.label = name;
+  const redraw = () => { save(); renderDest(); renderRuta(); renderHist(); renderStats(); drawMarkers(); };
+  redraw();
+  toast(ans === 'all' ? `Ahora se llama «${name}», también en ${js.length} jornada${js.length > 1 ? 's' : ''}` : `Ahora se llama «${name}»${js.length ? '. El historial no cambia.' : ''}`, { ms: 5000, undo: () => { c.label = old; prev.forEach(([s, l]) => s.label = l); redraw(); } });
 }
 async function moveDest(c, lat, lon, addr) {
-  const o = { lat: c.lat, lon: c.lon, addr: c.addr }, m = isOf(c, o); linkVisits(c, o);
-  const js = histWith(c, o);
+  const o = { lat: c.lat, lon: c.lon, addr: c.addr }, m = isOf(c, o), js = histWith(c, o);
+  setView('dest');
+  let ans = 'now';
+  if (js.length) {
+    // Nada cambia hasta elegir: cerrar el cuadro (tocar fuera, Atrás) es cancelar
+    const sumKm = js.reduce((a, j) => a + (j.tot.road || 0), 0), on = navigator.onLine;
+    ans = await dlg({ title: '¿Corregir también el historial?', text: `«${c.label}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} (${fmtKm(sumKm)} en total) con la ubicación anterior.\n\n· Solo desde ahora: se mueve el destino y la ruta de hoy; el historial queda igual.\n· Corregir: además se recalculan los km y tiempos de esas jornadas${js.some(isReal) ? ' (el tiempo real anotado no cambia)' : ''}.${js.some(j => j.exp) ? ` ${js.filter(j => j.exp).length} ya ${js.filter(j => j.exp).length === 1 ? 'está exportada' : 'están exportadas'} y saldrían como «cambiada tras exportar».` : ''}`
+        + (on ? '' : '\n\nSin conexión no se puede recalcular el historial: elige «Solo desde ahora» y repite «Corregir la ubicación» con cobertura (en el mismo sitio vale).'),
+      acts: [{ t: 'Cancelar', cls: 'g', v: null }, { t: 'Solo desde ahora', cls: 'g', v: 'now' }, ...(on ? [{ t: `Corregir ${js.length}`, v: 'all' }] : [])] });
+    if (!ans) return toast(`Sin cambios: «${c.label}» sigue donde estaba.`);
+  }
+  // aplicar: destino, ruta de hoy (y jornada en edición), punto de partida habitual si era este sitio
+  linkVisits(c, o);
+  const moved = [], favO = D.fav && near(D.fav, o) ? { lat: D.fav.lat, lon: D.fav.lon } : null;
   c.lat = lat; c.lon = lon; c.addr = addr;
-  // ruta de hoy y jornada en edición; también el punto de partida habitual si era este sitio
-  let today = 0;
-  openRoutes().forEach(r => { r.stops.forEach(s => { if (m(s)) { s.lat = lat; s.lon = lon; s.cid = c.id; today++; } }); if (near(r.start, o)) { r.start.lat = lat; r.start.lon = lon; today++; } });
-  if (near(D.fav, o)) { D.fav.lat = lat; D.fav.lon = lon; }
-  save(); renderDest(); setView('dest'); if (today) { renderRuta(); recalc(); }
+  openRoutes().forEach(r => { r.stops.forEach(s => { if (m(s)) { moved.push([s, s.lat, s.lon, s.cid]); s.lat = lat; s.lon = lon; s.cid = c.id; } }); if (near(r.start, o)) { moved.push([r.start, r.start.lat, r.start.lon]); r.start.lat = lat; r.start.lon = lon; } });
+  if (favO) { D.fav.lat = lat; D.fav.lon = lon; }
+  const today = moved.length;
+  const undoBase = () => { c.lat = o.lat; c.lon = o.lon; c.addr = o.addr; moved.forEach(([x, la, lo, id]) => { x.lat = la; x.lon = lo; if (id !== undefined) x.cid = id; }); if (favO) { D.fav.lat = favO.lat; D.fav.lon = favO.lon; } };
+  const redraw = () => { save(); renderDest(); renderRuta(); recalc(); renderHist(); renderStats(); renderChip(); };
+  save(); renderDest(); if (today) { renderRuta(); recalc(); }
   const msg = `«${c.label}» movido${today ? ', también en la ruta de hoy' : ''}`;
-  if (!js.length) return toast(msg);
-  const sumKm = js.reduce((a, j) => a + (j.tot.road || 0), 0);
-  const v = await dlg({ title: '¿Corregir también el historial?', text: `«${c.label}» aparece en ${js.length} jornada${js.length > 1 ? 's' : ''} guardada${js.length > 1 ? 's' : ''} (${fmtKm(sumKm)} en total) con la ubicación anterior. Si las corriges, se recalculan sus km y tiempos por carretera${js.some(isReal) ? '; el tiempo real que anotaste no cambia' : ''}. ${js.some(j => j.exp) ? ` ${js.filter(j => j.exp).length} ya ${js.filter(j => j.exp).length === 1 ? 'está exportada' : 'están exportadas'}: si las corriges, saldrán como «cambiada tras exportar».` : ' Si ya enviaste el informe de esos días, sus km cambiarán.'}`
-      + (navigator.onLine ? '' : '\n\nAhora no tienes conexión: elige «Solo desde ahora» y repite «Corregir la ubicación» con cobertura (en el mismo sitio vale).'),
-    acts: [{ t: 'Solo desde ahora', cls: 'g', v: false }, { t: `Corregir ${js.length}`, v: true }] });
-  if (!v || !navigator.onLine) return toast(msg + '. El historial no cambia.');
-  if (recalcBusy) return toast('Ya hay un recálculo en marcha. Prueba en un momento.');
+  if (ans !== 'all') return toast(msg + (js.length ? '. El historial no cambia.' : ''), { ms: 5000, undo: () => { undoBase(); redraw(); } });
+  if (recalcBusy) { toast('Ya hay un recálculo en marcha: el historial no cambia. Repite «Corregir la ubicación» en un momento.', { ms: 6000 }); return; }
   recalcBusy = true; const snaps = [], fail = []; let before = 0, after = 0;
   for (let i = 0; i < js.length; i++) {
     const j = js[i], snap = JSON.parse(JSON.stringify(j)); toast(`Corrigiendo ${i + 1} de ${js.length}…`, { ms: 20000 });
@@ -473,9 +487,15 @@ async function moveDest(c, lat, lon, addr) {
     if (i < js.length - 1) await sleep(1100);
   }
   recalcBusy = false; save(); renderHist(); renderStats(); renderChip(); renderDest();
-  const undo = () => { snaps.forEach(([j, sn]) => { Object.keys(j).forEach(k => delete j[k]); Object.assign(j, sn); }); save(); renderHist(); renderStats(); renderChip(); };
-  if (!snaps.length) return toast('No se ha podido recalcular ahora. El historial no ha cambiado: repite «Corregir la ubicación» más tarde.', { ms: 6000 });
-  toast(`${snaps.length} jornada${snaps.length > 1 ? 's' : ''} corregida${snaps.length > 1 ? 's' : ''}: ${fmtKm(before)} → ${fmtKm(after)}` + (fail.length ? `. ${fail.length} sin conexión, sin cambios.` : ''), { ms: 7000, undo });
+  const undo = () => { snaps.forEach(([j, sn]) => { Object.keys(j).forEach(k => delete j[k]); Object.assign(j, sn); }); undoBase(); redraw(); };
+  if (!snaps.length) return toast(msg + '. No se ha podido recalcular el historial ahora: queda igual. Repite «Corregir la ubicación» más tarde.', { ms: 7000, undo: () => { undoBase(); redraw(); } });
+  toast(`${snaps.length} jornada${snaps.length > 1 ? 's' : ''} corregida${snaps.length > 1 ? 's' : ''}: ${fmtKm(before)} → ${fmtKm(after)}` + (fail.length ? `. ${fail.length} sin conexión, sin cambios.` : ''), { ms: 8000, undo });
+}
+// Eliminar un destino (desde Destinos o desde Ajustes): el historial no cambia; en la ruta de hoy la parada vuelve a su dirección
+function deleteDest(c) {
+  const i = D.clients.indexOf(c); if (i < 0) return; const back = detachDest(c); D.clients.splice(i, 1);
+  const redraw = () => { save(); renderDest(); renderRuta(); renderAjustesLists(); drawMarkers(); }; redraw();
+  toast(`«${c.label}» eliminado${back.n ? ', y en la ruta de hoy vuelve a su dirección' : ''}`, { ms: 5000, undo: () => { D.clients.splice(i, 0, c); back(); redraw(); } });
 }
 function destVisits(c) {
   const js = D.hist.filter(j => j.stops.some(s => clientOf(s) === c)).sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));

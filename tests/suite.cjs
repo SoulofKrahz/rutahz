@@ -215,8 +215,17 @@ test('corregir un destino', async ({ browser, base }) => {
     await p.click('#pickOk'); await p.waitForSelector('.dlg h3:has-text("historial")', { timeout: 5000 });
     if (process.env.SHOT) { await p.waitForTimeout(600); await p.screenshot({ path: process.env.SHOT }); }
     ok((await p.textContent('.dlg')).includes('2 jornadas'), 'pregunta por las 2 jornadas donde aparece (una enlazada y otra por estar en el mismo sitio)');
-    await p.click(`.dlg .acts button:has-text("${answer}")`);
+    if (answer === null) await p.click('#layer .ov', { position: { x: 10, y: 10 } }); else if (answer === 'back') await p.goBack(); else await p.click(`.dlg .acts button:has-text("${answer}")`);
   };
+  // cancelar o cerrar el cuadro: no cambia nada (ni el destino ni la ruta de hoy)
+  const same = () => p.evaluate(a => Math.abs(__rz.D.clients[0].lat - a.lat) < 1e-6 && Math.abs(__rz.D.cur.stops[0].lat - a.lat) < 1e-6, A);
+  await move('Cancelar'); await p.waitForTimeout(400);
+  ok(await same(), '«Cancelar» no mueve nada');
+  ok(/Sin cambios/.test(await p.textContent('#toast')), 'y lo dice');
+  await move(null); await p.waitForTimeout(400);
+  ok(await same(), 'tocar fuera del cuadro tampoco mueve nada');
+  await move('back'); await p.waitForTimeout(400);
+  ok(await same(), 'ni el botón Atrás del móvil');
   await move('Solo desde ahora'); await p.waitForTimeout(600);
   let st = await p.evaluate(() => ({ c: __rz.D.clients[0], cur: __rz.D.cur.stops[0], h: __rz.D.hist.map(j => ({ lat: j.stops[0].lat, cid: j.stops[0].cid, km: j.tot.road })) }));
   ok(Math.abs(st.c.lat - NEW.lat) < 1e-4 && Math.abs(st.cur.lat - NEW.lat) < 1e-4, 'el destino y la ruta de hoy pasan a la ubicación nueva');
@@ -234,6 +243,9 @@ test('corregir un destino', async ({ browser, base }) => {
   st = await p.evaluate(() => __rz.D.hist.map(j => ({ lat: j.stops[0].lat, km: j.tot.road })));
   ok(Math.abs(st[0].lat - A.lat) < 1e-3 && st[0].km === km0[0], 'Deshacer devuelve el historial como estaba');
   // nombre
+  await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Cambiar nombre")'); await p.fill('#pv', 'Casa de María'); await p.click('.dlg .acts button:has-text("Guardar")');
+  await p.waitForSelector('.dlg h3:has-text("historial")'); await p.click('.dlg .acts button:has-text("Cancelar")'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => __rz.D.clients[0].label === 'Casa de M.' && __rz.D.cur.stops[0].label === 'Casa de M.'), 'al renombrar, «Cancelar» deja el nombre como estaba');
   await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Cambiar nombre")'); await p.fill('#pv', 'Casa de María'); await p.click('.dlg .acts button:has-text("Guardar")');
   await p.waitForSelector('.dlg h3:has-text("historial")'); await p.click('.dlg .acts button:has-text("Cambiar en 2")'); await p.waitForTimeout(300);
   ok(await p.evaluate(() => __rz.D.hist.filter(j => j.stops[0].label === 'Casa de María').length === 2 && __rz.D.cur.stops[0].label === 'Casa de María'), 'el nombre nuevo pasa a la ruta de hoy y, si se confirma, al historial');
