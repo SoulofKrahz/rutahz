@@ -46,13 +46,6 @@ function renderAjustesLists() {
     $('#favRn').onclick = async () => { const v = await prompt2('Nombre del punto de partida habitual', D.fav.label); if (v && v.trim()) { const wasCur = D.cur.start && near(D.cur.start, D.fav); D.fav.label = v.trim(); if (wasCur) D.cur.start.label = D.fav.label; save(); renderAjustesLists(); renderRuta(); } };
     $('#favRm').onclick = () => { const old = D.fav; D.fav = null; save(); renderAjustesLists(); renderRuta(); toast('Punto habitual quitado', { undo: () => { D.fav = old; save(); renderAjustesLists(); renderRuta(); } }); };
   }
-  const cl = $('#clList'); if (!cl) return; const cnt = visitCounts();
-  cl.innerHTML = D.clients.length ? D.clients.slice().sort((a, b) => a.label.localeCompare(b.label, 'es')).map(c => `<div class="row" data-id="${c.id}"><div><b>${esc(c.label)}</b><small>${cnt.get(c.id) ? cnt.get(c.id) + ' visita' + (cnt.get(c.id) > 1 ? 's' : '') : 'Sin visitas guardadas'}</small></div><button class="gb rn" aria-label="Cambiar nombre de ${esc(c.label)}">${ic('edit')}</button><button class="gb dg rm" aria-label="Quitar ${esc(c.label)}">${ic('trash')}</button></div>`).join('') : '<p class="hint">Todavía no has guardado ninguno.</p>';
-  cl.querySelectorAll('.row').forEach(r => {
-    const c = D.clients.find(x => x.id === r.dataset.id); if (!c) return;
-    r.querySelector('.rn').onclick = () => renameDest(c).then(renderAjustesLists); // mismo flujo que en Destinos
-    r.querySelector('.rm').onclick = () => deleteDest(c);
-  });
 }
 
 /* ---- Apariencia y accesibilidad ---- */
@@ -200,7 +193,7 @@ $('#bkIn').onchange = e => {
   rd.readAsText(f);
 };
 $('#bWipe').onclick = async () => {
-  const v = await dlg({ title: '¿Borrar todos los datos?', text: 'Se borran la ruta actual, el historial, los clientes, el punto habitual, los ajustes y el PIN de este dispositivo. No se puede deshacer.\n\nEscribe BORRAR para confirmar.', ok: 'Borrar todo', danger: true, focus: true, html: '<input class="inp" id="wp" type="text" autocomplete="off" autocapitalize="characters" placeholder="BORRAR">', check: b => b.querySelector('#wp').value.trim().toUpperCase() === 'BORRAR' ? true : (toast('Escribe BORRAR para confirmar.'), undefined) });
+  const v = await dlg({ title: '¿Borrar todos los datos?', text: 'Se borran la ruta actual, el historial, los destinos, el punto de partida habitual, los ajustes y el PIN de este dispositivo. No se puede deshacer.\n\nEscribe BORRAR para confirmar.', ok: 'Borrar todo', danger: true, focus: true, html: '<input class="inp" id="wp" type="text" autocomplete="off" autocapitalize="characters" placeholder="BORRAR">', check: b => b.querySelector('#wp').value.trim().toUpperCase() === 'BORRAR' ? true : (toast('Escribe BORRAR para confirmar.'), undefined) });
   if (!v) return;
   [KEY, PFK, PINK, MK].forEach(ls.del);
   try { const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('rz-tiles')).map(k => caches.delete(k))); } catch (e) {}
