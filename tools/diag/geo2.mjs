@@ -31,7 +31,8 @@ function rank(list, q, near) {
   for (const r of out) {
     const rt = [...new Set([...words(r.road), ...words(catalan(r.road))])], nt = words(r.name), at = words([r.town, r.sub].join(' '));
     const m = w => Math.max(sim(w, rt), 0.5 * sim(w, nt));
-    const road = ws.length ? Math.max(ws.reduce((a, w) => a + m(w), 0) / ws.length, cw.reduce((a, w) => a + m(w), 0) / (cw.length || 1)) : 0.5;
+    const cov = (qw) => { if (!qw.length) return 0.5; const qc = qw.reduce((a, w) => a + m(w), 0) / qw.length; const rs = rt.filter(t => !tw.has(t)); const rc = rs.length ? rs.filter(t => qw.some(w => sim(w, [t]) > 0)).length / rs.length : qc; return 0.75 * qc + 0.25 * rc; };
+    const road = Math.max(cov(ws), cov(cw));
     const tOk = !town || words(town).every(w => at.some(t => t === w || lev(t, w) <= 1));
     r.road01 = road; r.townOk = tOk;
     r.score = road * 6 + (town ? (tOk ? 3 : -4) : 0) + (n && r.num === n ? 1.5 : 0) - (near && !town ? Math.min(hav(near, r), 45) / 15 : 0);
