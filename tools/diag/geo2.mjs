@@ -47,13 +47,13 @@ async function nuevo(raw, near) {
 const actual = async raw => { let r = await nom(raw.trim()); if (!r.length) { const a = raw.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').trim(); if (a !== raw) r = await nom(a); } return r; };
 const lab = r => r ? `${r.road || r.name}${r.num ? ' ' + r.num : ''}, ${r.town}${r.sub ? ' (' + r.sub + ')' : ''} [${r.src}${r.approx ? ', sin nº' : ''}]` : '—';
 const ARENAL = { lat: 39.5049, lon: 2.7487 }, PALMA = { lat: 39.5696, lon: 2.6502 };
-const T = [['calle berga 48', ARENAL, 'Berga|arenal'], ['calle berga 48', PALMA, 'Berga|arenal'], ['c/ berga 48, s\'arenal', PALMA, 'Berga|arenal'], ['carrer de berga 48', ARENAL, 'Berga|arenal'],
-  ['calle de la luna 12 soller', PALMA, 'Lluna|soller'], ['avenida jaume III 10 palma', PALMA, 'Jaume III|palma'], ['plaza mayor inca', PALMA, 'Major|inca'], ['calle bons aires 24 llucmajor', PALMA, 'Bons Aires|llucmajor'],
-  ['avda. argentina 5', PALMA, 'Argentina'], ['calle aragon 215 palma', PALMA, 'Arag|palma'], ['carrer blanquerna 30', PALMA, 'Blanquerna'], ['calle sant miquel 50, palma', PALMA, 'Mi(qu|gu)el|palma'], ['calle mayor 5 manacor', PALMA, 'Major|manacor'], ['camino de son rapinya', PALMA, 'Son Rapinya'],
-  ['calle general riera 100', PALMA, 'General Riera'], ['carrer de la mar 3 port de pollença', PALMA, 'Mar|pollen'], ['calle conquistador inca', PALMA, 'Conquistador|inca'], ['carrer major 22 alaro', PALMA, 'Major|alar'], ['avinguda de les palmeres cala millor', PALMA, 'Palmer|millor|servera|sant llorenc'], ['calle ramon llull 15 felanitx', PALMA, 'Ram(o|ó)n Llull|felanitx']];
+const T = [['calle berga 48', ARENAL, 'Berga@arenal'], ['calle berga 48', PALMA, 'Berga@arenal'], ['c/ berga 48, s\'arenal', PALMA, 'Berga@arenal'], ['carrer de berga 48', ARENAL, 'Berga@arenal'],
+  ['calle de la luna 12 soller', PALMA, 'Lluna@soller'], ['avenida jaume III 10 palma', PALMA, 'Jaume III@palma'], ['plaza mayor inca', PALMA, 'Major@inca'], ['calle bons aires 24 llucmajor', PALMA, 'Bons Aires@llucmajor'],
+  ['avda. argentina 5', PALMA, 'Argentina'], ['calle aragon 215 palma', PALMA, 'Arag@palma'], ['carrer blanquerna 30', PALMA, 'Blanquerna'], ['calle sant miquel 50, palma', PALMA, 'Mi(qu|gu)el@palma'], ['calle mayor 5 manacor', PALMA, 'Major@manacor'], ['camino de son rapinya', PALMA, 'Son Rapinya'],
+  ['calle general riera 100', PALMA, 'General Riera'], ['carrer de la mar 3 port de pollença', PALMA, 'Mar@pollen'], ['calle conquistador inca', PALMA, 'Conquistador@inca'], ['carrer major 22 alaro', PALMA, 'Major@alar'], ['avinguda de les palmeres cala millor', PALMA, 'Palmer@millor|servera|sant llorenc'], ['calle ramon llull 15 felanitx', PALMA, 'Ram(o|ó)n Llull@felanitx']];
 let ok0 = 0, ok1 = 0;
 for (const [q, near, want] of T) {
-  const a = (await actual(q))[0], b = await nuevo(q, near), [w, tw] = want.split('|'), good = r => r && new RegExp(norm(w), 'i').test(norm((r.road || '') + ' ' + (r.name || ''))) && (!tw || new RegExp(norm(tw), 'i').test(norm(r.town + ' ' + r.sub)));
+  const a = (await actual(q))[0], b = await nuevo(q, near), [w, tw] = want.split('@'), good = r => r && new RegExp(norm(w), 'i').test(norm((r.road || '') + ' ' + (r.name || ''))) && (!tw || new RegExp(norm(tw), 'i').test(norm(r.town + ' ' + r.sub)));
   if (good(a)) ok0++; if (good(b[0])) ok1++;
   console.log(`\n«${q}» (mirando ${near === ARENAL ? "s'Arenal" : 'Palma'})\n  ahora: ${good(a) ? 'OK ' : 'MAL'} ${lab(a)}\n  nuevo: ${good(b[0]) ? 'OK ' : 'MAL'} ${lab(b[0])}${b[1] ? '   · 2º ' + lab(b[1]) : ''}`);
 }
