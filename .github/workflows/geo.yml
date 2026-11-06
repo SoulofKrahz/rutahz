@@ -1,6 +1,11 @@
 # Diagnóstico manual: ¿la búsqueda encuentra las direcciones que da el mapa?
 name: Diagnóstico de búsqueda
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      cual:
+        description: "geo (dirección del mapa) o nuevo (comparar buscadores)"
+        default: nuevo
 jobs:
   geo:
     runs-on: ubuntu-24.04
@@ -13,3 +18,6 @@ jobs:
         with:
           node-version: 22
       - run: node tools/diag/geo.mjs
+        if: github.event.inputs.cual != 'nuevo'
+      - run: node tools/diag/geo2.mjs
+        if: github.event.inputs.cual == 'nuevo'
