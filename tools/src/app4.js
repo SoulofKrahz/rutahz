@@ -258,6 +258,7 @@ const NEWS = [
     'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
     'Al guardar una parada en tus destinos (deslizando o desde «···»), te pide el nombre.',
     'Al <b>corregir la ubicación</b> de un destino puedes escribir la dirección nueva: el mapa te lleva allí y solo tienes que confirmar.',
+    'Búsqueda de direcciones mucho mejor: entiende «calle», «avenida», «plaza»… aunque en el mapa estén en catalán, abreviaturas (C/, Avda., nº), erratas y el pueblo si lo escribes; prefiere lo cercano a donde miras el mapa y avisa si el número no está. Al tocar el mapa sale la calle, no el comercio de al lado.',
     'Corregir la ubicación o el nombre de un destino ya no cambia nada hasta que eliges: hay botón <b>Cancelar</b>, y cerrar el cuadro también cancela. Lo que eliges se puede deshacer.',
     'Retoques: el selector de tamaño de letra cabe en pantallas pequeñas; no se puede exportar a mitad de editar una jornada (se quedaría fuera del informe).',
     'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },

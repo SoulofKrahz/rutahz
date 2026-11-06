@@ -183,6 +183,31 @@ test('búsqueda de direcciones', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6c2 · Búsqueda como la escribe la gente: «calle» por «carrer», el pueblo pesa, cerca del mapa primero, aviso sin nº */
+test('búsqueda en castellano y catalán', async ({ browser, base }) => {
+  const ft = (lat, lon, street, town, district, num, name) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { street, housenumber: num, city: town, district, name: name || street, type: num ? 'house' : 'street' } });
+  // Photon (tolera «calle» y la errata) devuelve la de Palma y la de s'Arenal; Nominatim solo encuentra «carrer berga» sin número
+  const photon = q => /berga/i.test(q) ? [ft(39.5745, 2.6512, "Carrer de Ca'n Berga", 'Palma', 'Canamunt'), ft(39.5049, 2.7487, 'carrer Berga', 'Llucmajor', "s'Arenal de Llucmajor")]
+    : /major|mayor/i.test(q) ? [ft(39.5713, 2.6509, 'Plaça Major', 'Palma', 'Canamunt'), ft(39.7212, 2.9105, 'Plaça Major', 'Inca', 'Centre')] : [];
+  const geo = q => /^carrer berga$/i.test(q) ? [{ lat: '39.5049', lon: '2.7487', display_name: "carrer Berga, s'Arenal de Llucmajor", address: { road: 'carrer Berga', town: "s'Arenal de Llucmajor" } }] : [];
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: data({ fav: { ...P(39.5049, 2.7487, 'Oficina Arenal') }, cur: { start: { ...P(39.5049, 2.7487, 'Oficina Arenal'), time: '' }, stops: [], notes: '', ret: true } }), rz_meta: meta(VER) }, photon, geo,
+    reverse: { name: 'Highribot Cali', display_name: "Highribot Cali, carrer Berga, 46, s'Arenal", address: { shop: 'Highribot Cali', road: 'carrer Berga', house_number: '46', town: "s'Arenal de Llucmajor" } } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true }); await p.waitForTimeout(600);
+  await p.evaluate(() => __rz.map.setView([39.5049, 2.7487], 15, { animate: false }));
+  await p.fill('#stopQ', 'calle berga 48'); await p.waitForSelector('#stopSug h6:has-text("Direcciones")', { timeout: 6000 }).catch(() => {});
+  const first = await p.textContent('#stopSug h6:has-text("Direcciones") + button').catch(() => '');
+  ok(/carrer Berga/i.test(first) && /Arenal/i.test(first), 'mirando s\'Arenal, «calle berga 48» da primero la carrer Berga de s\'Arenal → ' + first);
+  ok(/nº 48 no está/.test(first), 'y avisa de que el número no está en el mapa');
+  ok(ctx.geoQ.some(q => /^carrer berga 48$/i.test(q)), 'busca también traducido al catalán');
+  await p.fill('#stopQ', ''); await p.fill('#stopQ', 'plaza mayor inca'); await p.waitForSelector('#stopSug h6:has-text("Direcciones")', { timeout: 6000 }).catch(() => {});
+  const f2 = await p.textContent('#stopSug h6:has-text("Direcciones") + button').catch(() => '');
+  ok(/Inca/.test(f2) && !/Palma/.test(f2), 'si se escribe el pueblo, manda el pueblo → ' + f2);
+  await p.fill('#stopQ', ''); await p.click('#bStopPick'); await p.waitForTimeout(1500);
+  ok(/carrer Berga, 46/.test(await p.textContent('#pickT')), 'al tocar el mapa sale la calle y el número, no el comercio → ' + await p.textContent('#pickT'));
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 6d · Ajustes › Volver al punto de partida cambia también la ruta de hoy */
 test('ajuste de vuelta', async ({ browser, base }) => {
   const d = data({ cur: { start: { ...OFFICE, time: '' }, stops: [{ id: 'a', ...P(39.548, 2.693, 'Casa') }], notes: '', ret: true } });

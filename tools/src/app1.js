@@ -2,7 +2,7 @@
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-06-2';
+const VER = '2026-11-06-3';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -174,35 +174,99 @@ async function api(path, direct) {
   return r.json();
 }
 const B = { latMin: 39.20, latMax: 40.05, lonMin: 2.25, lonMax: 3.53 };
-// La búsqueda ya está limitada a la isla con el recuadro; no se añade «Mallorca» al texto porque fuera de Palma
-// no forma parte de la dirección y Nominatim no encontraba nada (Llucmajor, Inca, Manacor…).
-function geoSearch1(q, limit) {
-  const p = new URLSearchParams({ q, limit: String(limit), addressdetails: '1' });
-  if (!D.set.unl) { p.set('countrycodes', 'es'); p.set('viewbox', `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`); p.set('bounded', '1'); }
-  return api('/g/search?' + p, 'https://nominatim.openstreetmap.org/search?format=jsonv2&' + p);
-}
-async function geoSearch(q, limit) {
-  q = q.replace(/\s+/g, ' ').trim();
-  const r = await geoSearch1(q, limit); if (r.length) return r;
-  // Sin resultados: se prueba sin el número de portal (muchos no están en el mapa) y sin «Mallorca» si lo ha escrito la persona
-  const alt = q.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').replace(/,\s*(mallorca|illes balears|islas baleares|baleares|espa[ñn]a)\s*$/gi, '').replace(/\s*,\s*,/g, ',').trim().replace(/^,|,$/g, '').trim();
-  return alt && alt !== q ? geoSearch1(alt, limit) : r;
-}
 function geoReverse(lat, lon) {
   const p = new URLSearchParams({ lat: lat.toFixed(6), lon: lon.toFixed(6), zoom: '18', addressdetails: '1' });
   return api('/g/reverse?' + p, 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&' + p);
 }
-function placeLabel(r) {
+// addrFirst: al tocar el mapa interesa la calle y el número, no el comercio de al lado («Highribot Cali»)
+function placeLabel(r, addrFirst) {
   const a = r.address || {}, dn = (r.display_name || '').split(',').map(s => s.trim());
   const town = a.village || a.town || a.city || a.municipality || a.hamlet || '';
   const street = [a.road || a.pedestrian || a.footway || a.path, a.house_number].filter(Boolean).join(', ');
-  const main = r.name || street || a.suburb || town || dn[0] || 'Punto en el mapa';
+  const main = (addrFirst ? street || r.name : r.name || street) || a.suburb || town || dn[0] || 'Punto en el mapa';
   const subParts = [main !== street ? street : '', a.suburb && a.suburb !== main ? a.suburb : '', town !== main ? town : ''].filter(Boolean);
   const sub = subParts.join(' · ') || dn.slice(1, 3).join(', ');
   const label = town && main !== town ? `${main}, ${town}` : main;
   return { main, sub, label };
 }
 const TOWNS = [["Palma",39.5696,2.6502],["Calvià",39.5658,2.5051],["Andratx",39.5423,2.4256],["Port d'Andratx",39.5433,2.3856],["Peguera",39.5461,2.455],["Santa Ponça",39.5089,2.4683],["Esporles",39.6428,2.5892],["Valldemossa",39.7106,2.625],["Deià",39.7469,2.6486],["Sóller",39.7649,2.7147],["Bunyola",39.6997,2.7239],["Santa Maria del Camí",39.6353,2.7622],["Marratxí",39.6297,2.7514],["Alaró",39.7078,2.7994],["Binissalem",39.6875,2.8492],["Lloseta",39.7186,2.8339],["Sa Pobla",39.7717,3.0175],["Muro",39.7364,3.0578],["Santa Margalida",39.7011,3.1069],["Ca'n Picafort",39.7772,3.1519],["Sineu",39.6428,3.0114],["Inca",39.7217,2.9106],["Sencelles",39.6217,2.8894],["Algaida",39.5578,2.8842],["Montuïri",39.5642,2.9739],["Porreres",39.5153,3.0197],["Petra",39.6086,3.1058],["Santanyí",39.3556,3.1275],["Ses Salines",39.3164,3.0475],["Colònia de Sant Jordi",39.3197,2.9986],["Campos",39.4322,2.9714],["Llucmajor",39.4897,2.8917],["Felanitx",39.4694,3.1489],["Porto Colom",39.4283,3.2669],["Manacor",39.5694,3.2085],["Porto Cristo",39.5406,3.3211],["Sant Llorenç des Cardassar",39.6089,3.2789],["Son Servera",39.6106,3.3778],["Cala Millor",39.5936,3.3831],["Capdepera",39.7075,3.4342],["Cala Rajada",39.715,3.4689],["Artà",39.6953,3.3505],["Pollença",39.8762,3.0175],["Port de Pollença",39.9061,3.0842],["Alcúdia",39.8523,3.1219]];
+
+/* ---- Búsqueda de direcciones (como en caravanahz, adaptada a Mallorca) ----
+   Por qué así: Nominatim solo encuentra lo que está escrito tal cual en el mapa, y en Mallorca las calles están en catalán
+   («Carrer de Berga», no «calle Berga»); muchos portales no están; y no tolera abreviaturas ni erratas. Por eso:
+    1. Se limpia lo escrito (C/, Avda., nº, pisos y puertas, código postal).
+    2. Se busca tal cual y traducido al catalán (calle → carrer, mayor → major…), en Nominatim y en Photon
+       (otro buscador sobre los mismos datos que tolera erratas), a la vez y limitado a la isla.
+    3. Se ordena por lo que coincide el nombre de la calle, el pueblo si se escribió, el número y la cercanía al mapa.
+    4. Si no hay nada bueno: sin el número de portal; luego calle y pueblo por separado; por último, el pueblo (aproximado).
+   Medido con 20 direcciones reales (tools/diag/geo2.mjs): de 6 a 15 bien a la primera. */
+const GEO_ABR = [[/(^|[\s,])c\s*\/\s*/gi, '$1calle '], [/(^|[\s,])(cl|cll|c)\.\s+/gi, '$1calle '], [/(^|[\s,])(avda|avd|av|avgda)\.?(?=\s)/gi, '$1avenida'], [/(^|[\s,])(ctra|crta|cra)\.?(?=\s)/gi, '$1carretera'], [/(^|[\s,])(pza|plz|pl|pça)\.?(?=\s)/gi, '$1plaza'], [/(^|[\s,])(p[ºo°]|pso|pg)\.?(?=\s)/gi, '$1paseo'], [/(^|[\s,])(urb)\.?(?=\s)/gi, '$1urbanización'], [/(^|[\s,])(cno|cmno)\.?(?=\s)/gi, '$1camino'], [/(^|[\s,])(cr|crer)\.?(?=\s)/gi, '$1carrer']];
+function cleanQuery(q) {
+  let s = ' ' + String(q || '').replace(/\s+/g, ' ').trim() + ' ';
+  for (const [re, to] of GEO_ABR) s = s.replace(re, to);
+  return s.replace(/\b(n[ºo°.]|núm\.?|num\.?|número)\s*(?=\d)/gi, '').replace(/,?\s*\b\d{1,2}\s*[ºª°]\s*(izq(da)?|dcha?|der|[a-h])?\b\.?/gi, '')
+    .replace(/,?\s*\b(piso|planta|puerta|pta|bajos?|entresuelo|esc(alera)?|izq(da|uierda)?|dcha|dch|derecha)\b\.?(\s+(\d{1,2}|[a-h])\b)?/gi, '').replace(/\bs\/n\b/gi, '').replace(/\b0?7\d{3}\b/g, '')
+    .replace(/,\s*(mallorca|illes balears|islas baleares|baleares|espa[ñn]a)\s*$/gi, '').replace(/\s*,\s*/g, ', ').replace(/(,\s*)+/g, ', ').replace(/\s+/g, ' ').trim().replace(/^,|,$/g, '').trim();
+}
+const GEO_CAT = [[/\bcalle\b/gi, 'carrer'], [/\bavenida\b/gi, 'avinguda'], [/\bplaza\b/gi, 'plaça'], [/\bpaseo\b/gi, 'passeig'], [/\bcamino\b/gi, 'camí'], [/\btraves[ií]a\b/gi, 'travessia'], [/\bcallej[oó]n\b/gi, 'carreró'], [/\burbanizaci[oó]n\b/gi, 'urbanització'], [/\bplazoleta\b/gi, 'placeta'],
+  [/\bmayor\b/gi, 'major'], [/\bluna\b/gi, 'lluna'], [/\bsan\b/gi, 'sant'], [/\biglesia\b/gi, 'església'], [/\bnueva\b/gi, 'nova'], [/\bnuevo\b/gi, 'nou'], [/\bmolino\b/gi, 'molí'], [/\bfuente\b/gi, 'font'], [/\bpuente\b/gi, 'pont'], [/\bpozo\b/gi, 'pou'], [/\bcruz\b/gi, 'creu'], [/\bvirgen\b/gi, 'verge'], [/\bcampo\b/gi, 'camp'], [/\bpuerto\b/gi, 'port'],
+  [/\bjaime\b/gi, 'jaume'], [/\bjuan\b/gi, 'joan'], [/\bpedro\b/gi, 'pere'], [/\bjos[eé]\b/gi, 'josep'], [/\bmiguel\b/gi, 'miquel'], [/\bantonio\b/gi, 'antoni'], [/\bfrancisco\b/gi, 'francesc'], [/\bjorge\b/gi, 'jordi']];
+const toCatalan = q => GEO_CAT.reduce((s, [re, to]) => s.replace(re, to), q);
+const noNum = q => q.replace(/(^|[\s,])\d{1,4}\s*[a-z]?\b(?!\s*(de\s))/gi, '$1').replace(/\s*,\s*/g, ', ').replace(/(,\s*)+/g, ', ').replace(/\s+/g, ' ').trim().replace(/^,|,$/g, '').trim();
+const numOf = q => (noNum(q) !== q && (q.match(/(?:^|[\s,])(\d{1,4})\s*[a-z]?\b/i) || [])[1]) || '';
+const GEO_STOP = new Set(['de', 'del', 'la', 'el', 'les', 'los', 'las', 'els', 'sa', 'es', 'ca', 'en', 'na', 'calle', 'carrer', 'avenida', 'avinguda', 'plaza', 'placa', 'paseo', 'passeig', 'camino', 'cami', 'carretera', 'travessia', 'urbanitzacio', 'urbanizacion', 'mallorca', 'illes', 'balears']);
+const gWords = q => norm(q).replace(/[’`]/g, "'").replace(/[^a-z0-9ñç' ]/g, ' ').split(/[\s']+/).filter(w => w.length > 1 && !GEO_STOP.has(w) && !/^\d/.test(w));
+const GEO_TOWNS = [...new Set(TOWNS.map(t => norm(t[0]).replace(/'/g, ' ')).concat(['s arenal', 'arenal', 'consell', 'selva', 'campanet', 'buger', 'costitx', 'lloret de vistalegre', 'maria de la salut', 'ariany', 'vilafranca de bonany', 'sant joan', 'santa eugenia', 'mancor de la vall', 'escorca', 'fornalutx', 'estellencs', 'banyalbufar', 'puigpunyent', 'sa rapita', 'cala d or', 'son ferrer', 'el toro', 'magaluf', 'palmanova', 'illetes', 'genova', 'establiments', 'son sardina', 'sa cabaneta', 'es pont d inca', 'coll d en rabassa', 'can pastilla', 'sant jordi', 's aranjassa', 'can picafort', 'portocolom', 'cala ratjada', 's illot', 'cala bona', 'sa coma', 'colonia de sant pere', 'port d alcudia', 'port de soller', 'cala figuera', 'cala santanyi', 's alqueria blanca', 'es llombards', 'son macia', 'cas concos']))];
+function townIn(q) { const n = ' ' + norm(q).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' '; return GEO_TOWNS.filter(t => n.includes(' ' + t + ' ')).sort((a, b) => b.length - a.length)[0] || ''; }
+function lev1(a, b) { if (Math.abs(a.length - b.length) > 1) return 9; let i = 0; while (i < a.length && a[i] === b[i]) i++; if (i === a.length && i === b.length) return 0; return a.slice(i + 1) === b.slice(i + 1) || a.slice(i) === b.slice(i + 1) || a.slice(i + 1) === b.slice(i) ? 1 : 9; }
+const gSim = (w, toks) => toks.reduce((m, t) => Math.max(m, t === w ? 1 : w.length >= 4 && t.length >= 4 && lev1(w, t) <= 1 ? 0.8 : w.length >= 5 && t.startsWith(w) && t.length - w.length <= 3 ? 0.7 : 0), 0);
+// Resultados de los dos buscadores en una forma común (la de Nominatim, que es la que entiende placeLabel)
+const fromNom = x => ({ ...x, lat: +x.lat, lon: +x.lon, _src: 'N' });
+const fromPh = f => { const p = f.properties || {}, [lon, lat] = f.geometry.coordinates, road = p.street || (p.type === 'street' ? p.name : '');
+  return { lat, lon, name: p.name && p.name !== road ? p.name : '', display_name: [p.name, p.street, p.city || p.town || p.village].filter(Boolean).join(', '), address: { road, house_number: p.housenumber, town: p.city || p.town || p.village || '', suburb: p.district || p.locality || '' }, _src: 'P' }; };
+function geoNom(q, extra = {}) {
+  const p = new URLSearchParams({ ...(q ? { q } : {}), ...extra, limit: '6', addressdetails: '1' });
+  if (!D.set.unl) { p.set('countrycodes', 'es'); p.set('viewbox', `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`); p.set('bounded', '1'); }
+  return api('/g/search?' + p, 'https://nominatim.openstreetmap.org/search?format=jsonv2&' + p).then(r => (r || []).map(fromNom), () => []);
+}
+function geoPh(q, near) {
+  const p = new URLSearchParams({ q, limit: '8' });
+  if (!D.set.unl) p.set('bbox', `${B.lonMin},${B.latMin},${B.lonMax},${B.latMax}`);
+  if (near) { p.set('lat', near.lat.toFixed(4)); p.set('lon', near.lon.toFixed(4)); p.set('location_bias_scale', '0.4'); }
+  return api('/g/photon?' + p, 'https://photon.komoot.io/api/?' + p).then(j => ((j && j.features) || []).map(fromPh), () => []);
+}
+function geoRank(list, q, near) {
+  const town = townIn(q), qs = noNum(q), n = numOf(q), tw = new Set(gWords(town));
+  const ws = gWords(qs).filter(w => !tw.has(w)), cw = gWords(toCatalan(qs)).filter(w => !tw.has(w)), out = [];
+  for (const r of list) { const a = r.address || {}; if (Number.isFinite(r.lat) && !out.some(o => hav(o, r) < 0.04 && norm((o.address || {}).road) === norm(a.road) && (o.address || {}).house_number === a.house_number)) out.push(r); }
+  for (const r of out) {
+    const a = r.address || {}, road = a.road || a.pedestrian || a.footway || '';
+    const rt = [...new Set([...gWords(road), ...gWords(toCatalan(road))])], nt = gWords(r.name), at = gWords([a.village, a.town, a.city, a.municipality, a.suburb, a.hamlet].join(' '));
+    const m = w => Math.max(gSim(w, rt), 0.5 * gSim(w, nt));
+    const cov = qw => { if (!qw.length) return 0.5; const qc = qw.reduce((x, w) => x + m(w), 0) / qw.length, rs = rt.filter(t => !tw.has(t)); return 0.75 * qc + 0.25 * (rs.length ? rs.filter(t => qw.some(w => gSim(w, [t]) > 0)).length / rs.length : qc); };
+    const rm = Math.max(cov(ws), cov(cw)), tOk = !town || gWords(town).every(w => at.some(t => t === w || lev1(t, w) <= 1));
+    r._road = rm; r._town = tOk; r._approx = !!n && String(a.house_number || '') !== n;
+    r._score = rm * 6 + (town ? (tOk ? 3 : -4) : 0) + (n && String(a.house_number || '') === n ? 1.5 : 0) - (near && !town ? Math.min(hav(near, r), 45) / 15 : 0);
+  }
+  return out.sort((a, b) => b._score - a._score);
+}
+const geoGood = l => l.filter(x => x._road >= 0.6 && x._town);
+async function geoSearch(raw, limit = 5, near) {
+  const q = cleanQuery(raw); if (q.length < 2) return [];
+  const qc = toCatalan(q), jobs = [geoNom(q), geoPh(q, near)];
+  if (qc !== q) jobs.push(geoNom(qc), geoPh(qc, near));
+  let all = (await Promise.all(jobs)).flat(), r = geoGood(geoRank(all, q, near)); if (r.length) return r.slice(0, limit);
+  const a = noNum(q), ac = toCatalan(a);
+  if (a !== q) { all = all.concat((await Promise.all([geoNom(ac), geoPh(a, near)])).flat()); r = geoGood(geoRank(all, q, near)); if (r.length) return r.slice(0, limit); }
+  const town = townIn(q);
+  if (town) { // calle y pueblo por separado; y si no, el pueblo
+    const tn = (TOWNS.find(t => norm(t[0]).replace(/'/g, ' ') === town) || [town])[0];
+    const st = gWords(ac).filter(w => !gWords(town).includes(w)).join(' ');
+    if (st) { all = all.concat((await Promise.all([geoNom('', { street: st, city: tn }), geoPh(st + ' ' + tn, near)])).flat()); r = geoGood(geoRank(all, q, near)); if (r.length) return r.slice(0, limit); }
+    return geoRank(all, q, near).filter(x => x._town).slice(0, 2).map(x => ({ ...x, _onlyTown: tn }));
+  }
+  return [];
+}
 
 /* =================== Cálculo de rutas =================== */
 // Tiempo al volante = tiempo de OSRM (sin tráfico, a velocidad de la vía) × factor de tráfico + minutos por llegada (aparcar, maniobrar).

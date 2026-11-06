@@ -59,6 +59,7 @@ Abren la app en Chromium con los servicios externos simulados (OSRM, Nominatim, 
 | actualización | Aviso en la pantalla del PIN, no pide el PIN dos veces, la siguiente apertura sí |
 | actualización con service worker | Con la app guardada por el service worker, un solo «Actualizar» carga la versión publicada y el aviso no vuelve |
 | búsqueda de direcciones | Busca la dirección tal cual (sin añadir «Mallorca») y, si no hay resultado, sin el número de portal |
+| búsqueda en castellano y catalán | «calle berga 48» encuentra «carrer Berga» cerca del mapa y avisa del nº; el pueblo escrito manda; al tocar el mapa sale la calle |
 | ajuste de vuelta | Ajustes › Volver al punto de partida cambia la ruta abierta y las siguientes |
 | corregir un destino | Mover un destino corrige la ruta de hoy; el historial solo si se confirma (recalcula km, avisa del cambio y se puede deshacer); las visitas siguen contando; el nombre igual |
 | jornadas exportadas | Exportar marca las jornadas; cabecera de cada mes; filtro «Sin exportar»; «cambiada tras exportar»; «Solo las pendientes»; marcar y desmarcar a mano |

@@ -4,6 +4,7 @@
 //   /t/<lon,lat;…>[?end=last]    → orden de paradas con menos km (OSRM trip)
 //   /g/search?q=…               → buscar direcciones (Nominatim / OpenStreetMap)
 //   /g/reverse?lat=…&lon=…      → dirección de un punto del mapa (Nominatim)
+//   /g/photon?q=…               → buscar direcciones con Photon (mismos datos, tolera erratas y palabras a medias)
 //   /manifest.webmanifest       → manifest con el icono del color con el que se instaló la app
 //   Todo lo demás lo sirve Pages como archivos estáticos (env.ASSETS) y no gasta cuota (_routes.json).
 //
@@ -11,7 +12,7 @@
 //   · Los servicios externos ven la IP de Cloudflare, no la del móvil de cada usuario.
 //   · Nominatim exige un User-Agent que identifique la app (su política de uso); desde el navegador no se puede poner.
 //   · Caché en el borde: repetir una ruta o una búsqueda no vuelve a molestar a OSRM ni a Nominatim.
-//   · Solo reenvía a esos dos servicios y solo los parámetros previstos: no es un proxy abierto.
+//   · Solo reenvía a esos servicios (OSRM, Nominatim y Photon) y solo los parámetros previstos: no es un proxy abierto.
 //
 // Coste: pensado para el plan gratuito (100.000 peticiones al día). Si se supera, Cloudflare da error hasta las
 // 00:00 UTC y la app pasa sola a la distancia aproximada o a llamar a los servicios directamente; nunca cobra.
@@ -82,18 +83,22 @@ function trip(url) {
 const GEO_PARAMS = {
   search: { q: /^.{1,200}$/s, limit: /^\d{1,2}$/, viewbox: /^-?[\d.]+,-?[\d.]+,-?[\d.]+,-?[\d.]+$/, bounded: /^[01]$/, countrycodes: /^[a-z]{2}(,[a-z]{2})*$/, addressdetails: /^[01]$/ },
   reverse: { lat: /^-?\d{1,3}(\.\d{1,8})?$/, lon: /^-?\d{1,3}(\.\d{1,8})?$/, zoom: /^\d{1,2}$/, addressdetails: /^[01]$/ },
+  photon: { q: /^.{1,200}$/s, limit: /^\d{1,2}$/, lat: /^-?\d{1,3}(\.\d{1,8})?$/, lon: /^-?\d{1,3}(\.\d{1,8})?$/, location_bias_scale: /^(0(\.\d{1,2})?|1)$/, bbox: /^-?[\d.]+,-?[\d.]+,-?[\d.]+,-?[\d.]+$/ },
 };
+// Nominatim estructurada (calle y pueblo por separado), para cuando la búsqueda normal no encuentra la calle
+GEO_PARAMS.search.street = /^.{1,120}$/s; GEO_PARAMS.search.city = /^.{1,80}$/s;
 function geo(url) {
-  const kind = url.pathname === '/g/search' ? 'search' : url.pathname === '/g/reverse' ? 'reverse' : null;
+  const kind = url.pathname === '/g/search' ? 'search' : url.pathname === '/g/reverse' ? 'reverse' : url.pathname === '/g/photon' ? 'photon' : null;
   if (!kind) return txt('Ruta no válida', 400);
-  const allowed = GEO_PARAMS[kind], out = new URLSearchParams({ format: 'jsonv2' });
+  const allowed = GEO_PARAMS[kind], out = new URLSearchParams(kind === 'photon' ? {} : { format: 'jsonv2' });
   for (const [k, re] of Object.entries(allowed)) {
     const v = url.searchParams.get(k);
     if (v == null || v === '') continue;
     if (!re.test(v)) return txt('Parámetro no válido: ' + k, 400);
     out.set(k, v);
   }
-  if (kind === 'search' && !out.get('q')) return txt('Falta la búsqueda', 400);
+  if ((kind === 'search' && !out.get('q') && !out.get('street')) || (kind === 'photon' && !out.get('q'))) return txt('Falta la búsqueda', 400);
+  if (kind === 'photon') return upstream(`https://photon.komoot.io/api/?${out}`, url, GEO_TTL);
   if (kind === 'reverse' && !(out.get('lat') && out.get('lon'))) return txt('Faltan coordenadas', 400);
   return upstream(`https://nominatim.openstreetmap.org/${kind}?${out}`, url, GEO_TTL);
 }

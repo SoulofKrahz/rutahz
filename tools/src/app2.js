@@ -189,7 +189,7 @@ async function pickLookup() {
   try {
     const r = await geoReverse(c.lat, c.lng);
     if (my !== pickTok || !pick) return;
-    const p = placeLabel(r); pick.label = p.label;
+    const p = placeLabel(r, true); pick.label = p.label;
     $('#pickT').textContent = p.main; $('#pickS').textContent = p.sub || 'Toca «' + $('#pickOkT').textContent + '»';
   } catch (e) { if (my === pickTok) { $('#pickT').textContent = 'Punto en el mapa'; $('#pickS').textContent = 'No se ha encontrado la dirección'; } }
 }
@@ -296,7 +296,10 @@ function setupSearch(inp, box, kind) {
     if (kind === 'start' && D.fav && norm(D.fav.label).includes(q)) { items.push({ ...D.fav }); h += `<h6>Habitual</h6><button data-i="${items.length - 1}">${ic('star')}<div><b>${esc(D.fav.label)}</b><small>Tu punto de partida habitual</small></div></button>`; }
     const tw = TOWNS.filter(x => norm(x[0]).startsWith(q) || (q.length > 2 && norm(x[0]).includes(q))).slice(0, 3);
     if (tw.length) { h += '<h6>Municipios</h6>'; tw.forEach(x => { items.push({ lat: x[1], lon: x[2], label: x[0] }); h += `<button data-i="${items.length - 1}">${ic('pin')}<div><b>${esc(x[0])}</b><small>Centro del municipio</small></div></button>`; }); }
-    if (live && live.length) { h += '<h6>Direcciones</h6>'; live.forEach(r => { const p = placeLabel(r); items.push({ lat: +r.lat, lon: +r.lon, label: p.label }); h += `<button data-i="${items.length - 1}">${ic('pin')}<div><b>${esc(p.main)}</b><small>${esc(p.sub)}</small></div></button>`; }); }
+    if (live && live.length) { h += '<h6>Direcciones</h6>'; live.forEach(r => { const p = placeLabel(r), num = numOf(cleanQuery(inp.value));
+      const note = r._onlyTown ? `No la encuentro: te llevo a ${r._onlyTown}` : r._approx && num ? `La calle; el nº ${num} no está en el mapa` : '';
+      items.push({ lat: +r.lat, lon: +r.lon, label: r._onlyTown ? r._onlyTown : p.label });
+      h += `<button data-i="${items.length - 1}">${ic('pin')}<div><b>${esc(r._onlyTown ? r._onlyTown : p.main)}</b><small>${note ? `<em class="gapx">${esc(note)}</em> · ` : ''}${esc(p.sub)}</small></div></button>`; }); }
     if (state === 'busy') h += '<p class="ld">Buscando direcciones…</p>';
     else if (state === 'none' && !items.length) h += '<p>Sin resultados. Prueba con otra forma de escribirlo o usa «Elegir en el mapa».</p>';
     else if (state === 'off') h += '<p>Sin conexión: solo tus destinos y los municipios.</p>';
@@ -312,7 +315,7 @@ function setupSearch(inp, box, kind) {
     if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
-    try { const r = await geoSearch(q, 5); if (my !== tok || !inp.value.trim()) return; paint(r, r.length ? '' : 'none'); }
+    try { const c = map.getCenter(), r = await geoSearch(q, 5, { lat: c.lat, lon: c.lng }); if (my !== tok || !inp.value.trim()) return; paint(r, r.length ? '' : 'none'); }
     catch (e) { if (my === tok && inp.value.trim()) paint(null, 'err'); }
   }
   inp.addEventListener('input', () => {

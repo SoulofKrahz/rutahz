@@ -56,8 +56,9 @@ async function context(browser, base, o = {}) {
   });
   await ctx.route(base + 'g/**', r => {
     const u = new URL(r.request().url());
-    if (u.pathname === '/g/reverse') return json(r, { display_name: 'Carrer Major, Sóller', address: { road: 'Carrer Major', town: 'Sóller' } });
-    (ctx.geoQ = ctx.geoQ || []).push(u.searchParams.get('q'));
+    if (u.pathname === '/g/reverse') return json(r, o.reverse || { display_name: 'Carrer Major, Sóller', address: { road: 'Carrer Major', town: 'Sóller' } });
+    (ctx.geoQ = ctx.geoQ || []).push(u.searchParams.get('q') || [u.searchParams.get('street'), u.searchParams.get('city')].join(', '));
+    if (u.pathname === '/g/photon') return json(r, { type: 'FeatureCollection', features: typeof o.photon === 'function' ? o.photon(u.searchParams.get('q'), u) : (o.photon || []) });
     json(r, typeof o.geo === 'function' ? o.geo(u.searchParams.get('q'), u) : (o.geo || []));
   });
   if (o.seed) await ctx.addInitScript(s => {
