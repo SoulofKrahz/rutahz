@@ -43,6 +43,8 @@ Netlify y Cloudflare son direcciones distintas. El navegador **no** comparte los
 3. Prueba en local: `node tests/suite.cjs` (con Playwright instalado; si usas tu Chrome, `PW_CHROME=/ruta/a/chrome`). `VERBOSE=1` muestra cada comprobación y `node tests/suite.cjs tiempos` lanza solo las que contienen esa palabra.
 4. Haz push a `main`. GitHub Actions pasa las pruebas; si alguna falla, no publica. Si pasan, publica en Cloudflare y comprueba que `version.txt` sirve la versión nueva; si no, publica otra vez.
 
+**Si Cloudflare falla al publicar** («Failed to publish your Function: Unknown internal error»): el 6 de noviembre de 2026 pasó con wrangler 4.158.0 y se resolvió fijando la 4.157.0 (`wranglerVersion` en `deploy.yml`). Si vuelve a pasar con la versión fijada, es un problema de Cloudflare: relanza el trabajo desde GitHub Actions más tarde. Para probar una versión nueva de wrangler, cambia `wranglerVersion` y mira que la comprobación de versión pase.
+
 ### Qué comprueban las pruebas (`tests/suite.cjs`)
 
 Abren la app en Chromium con los servicios externos simulados (OSRM, Nominatim, teselas), así que no dependen de internet.
