@@ -242,6 +242,14 @@ test('corregir un destino', async ({ browser, base }) => {
   await p.click('#toast button'); await p.waitForTimeout(300);
   st = await p.evaluate(() => __rz.D.hist.map(j => ({ lat: j.stops[0].lat, km: j.tot.road })));
   ok(Math.abs(st[0].lat - A.lat) < 1e-3 && st[0].km === km0[0], 'Deshacer devuelve el historial como estaba');
+  // escribir la dirección nueva en vez de mover el mapa
+  await p.click('.bb button[data-v="dest"]'); await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Corregir la ubicación")'); await p.waitForTimeout(300);
+  ok(await p.isVisible('#pickQ'), 'al corregir la ubicación hay un buscador de dirección');
+  await p.fill('#pickQ', 'Sóller'); await p.click('#pickSug button:has-text("Sóller")'); await p.waitForTimeout(900);
+  const ctr = await p.evaluate(() => { const c = __rz.map.getCenter(); return [c.lat, c.lng]; });
+  ok(Math.abs(ctr[0] - 39.766) < 0.02 && Math.abs(ctr[1] - 2.715) < 0.02 && (await p.textContent('#pickT')).includes('Sóller'), 'al elegir la dirección, el mapa va allí → ' + ctr.map(x => x.toFixed(3)) + ' ' + await p.textContent('#pickT'));
+  await p.click('#pickOk'); await p.waitForSelector('.dlg h3:has-text("historial")'); await p.click('.dlg .acts button:has-text("Cancelar")'); await p.waitForTimeout(300);
+  ok(!(await p.isVisible('#pickQ')), 'y el buscador se cierra al terminar');
   // nombre
   await p.click('.dr:has-text("Casa de M.") .bd'); await p.click('.amb:has-text("Cambiar nombre")'); await p.fill('#pv', 'Casa de María'); await p.click('.dlg .acts button:has-text("Guardar")');
   await p.waitForSelector('.dlg h3:has-text("historial")'); await p.click('.dlg .acts button:has-text("Cancelar")'); await p.waitForTimeout(300);

@@ -177,8 +177,10 @@ function startPick(kind, ref0) {
   const ref = ref0 || (kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav));
   setTimeout(() => { map.invalidateSize(); if (ref && map.getZoom() < 14) map.setView([ref.lat, ref.lon], 15, { animate: !RM }); else pickLookup(); }, 80);
   map.on('moveend', pickMoved);
+  // Corregir la ubicación: también se puede escribir la dirección nueva y el mapa va allí
+  $('#pickSr').hidden = kind !== 'dest-move'; $('#pickQ').value = '';
 }
-function pickMoved() { clearTimeout(pickT); $('#pickT').textContent = 'Buscando la dirección…'; pickT = setTimeout(pickLookup, 450); }
+function pickMoved() { if (pick && pick.fix) { const c = map.getCenter(); if (hav({ lat: c.lat, lon: c.lng }, pick.fix) < 0.015) { pick.label = pick.fix.label; return; } pick.fix = null; } clearTimeout(pickT); $('#pickT').textContent = 'Buscando la dirección…'; pickT = setTimeout(pickLookup, 450); }
 async function pickLookup() {
   if (!pick) return;
   const my = ++pickTok, c = map.getCenter();
@@ -191,7 +193,7 @@ async function pickLookup() {
     $('#pickT').textContent = p.main; $('#pickS').textContent = p.sub || 'Toca «' + $('#pickOkT').textContent + '»';
   } catch (e) { if (my === pickTok) { $('#pickT').textContent = 'Punto en el mapa'; $('#pickS').textContent = 'No se ha encontrado la dirección'; } }
 }
-function endPick() { pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
+function endPick() { $('#pickSr').hidden = true; $('#pickQ').value = ''; $('#pickSug').hidden = true; pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
 $('#pickNo').onclick = endPick;
 $('#pickOk').onclick = () => {
   if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa', ref = pick.ref;
@@ -306,6 +308,7 @@ function setupSearch(inp, box, kind) {
   }
   function choose(it) {
     if (!it) return; inp.value = ''; close(); inp.blur();
+    if (kind === 'pick') { if (!pick) return; clearTimeout(pickT); pickTok++; pick.fix = { lat: it.lat, lon: it.lon, label: it.label }; pick.label = it.label; map.setView([it.lat, it.lon], 17, { animate: !RM }); $('#pickT').textContent = it.label; $('#pickS').textContent = 'Ajusta el mapa si hace falta y toca «' + $('#pickOkT').textContent + '»'; return; }
     if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
@@ -329,6 +332,7 @@ function setupSearch(inp, box, kind) {
 }
 setupSearch($('#startQ'), $('#startSug'), 'start');
 setupSearch($('#stopQ'), $('#stopSug'), 'stop');
+setupSearch($('#pickQ'), $('#pickSug'), 'pick');
 
 /* =================== Destinos y visitas =================== */
 function clientOf(s) { return (s.cid && D.clients.find(c => c.id === s.cid)) || D.clients.find(c => near(c, s)) || null; }

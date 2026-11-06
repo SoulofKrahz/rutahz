@@ -143,6 +143,7 @@ html:not(.mapc) .leaflet-tile-pane{filter:grayscale(1) contrast(1.06)}
 @media(max-width:900px){.pickbar{bottom:12px}}
 .pickbar div{min-width:0}.pickbar b{display:block;font-size:.875rem;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pickbar small{display:block;font-size:.75rem;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pickbar .acts{grid-column:1/-1;display:flex;gap:8px}.pickbar .acts .btn{flex:1}
+.picksr{position:absolute;left:12px;right:68px;top:12px;z-index:530;max-width:520px}.picksr .field{box-shadow:0 12px 30px -14px #0008;border-radius:14px}.picksr .field input{background:var(--card)}
 @media(max-width:900px){body.picking .mapw{height:calc(100dvh - 60px - var(--bbh) - env(safe-area-inset-top) - env(safe-area-inset-bottom));transition:height .2s}}
 
 /* ===== Tarjetas y controles ===== */
@@ -552,6 +553,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
       <button id="mFit" title="Ver toda la ruta" aria-label="Ver toda la ruta"><svg class="i"><use href="#i-fit"/></svg></button>
     </div>
     <div class="pick" id="pick" hidden><div class="shadow"></div><div class="cross"><svg><use href="#i-bigpin"/></svg></div></div>
+    <div class="picksr" id="pickSr" hidden><div class="field ic"><svg class="i"><use href="#i-search"/></svg><input id="pickQ" type="search" placeholder="Escribe la dirección nueva…" autocomplete="off" enterkeyhint="search" aria-label="Buscar la dirección nueva"><div class="sugg" id="pickSug" hidden></div></div></div>
     <div class="pickbar" id="pickBar" hidden>
       <div><b id="pickT">Mueve el mapa hasta el punto</b><small id="pickS">El punto es la punta del marcador</small></div>
       <div class="acts"><button class="btn g" id="pickNo">Cancelar</button><button class="btn" id="pickOk"><svg class="i"><use href="#i-ck"/></svg><span id="pickOkT">Añadir aquí</span></button></div>
@@ -753,7 +755,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-06-1';
+const VER = '2026-11-06-2';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1180,8 +1182,10 @@ function startPick(kind, ref0) {
   const ref = ref0 || (kind === 'stop' ? (D.cur.stops[D.cur.stops.length - 1] || D.cur.start) : (D.cur.start || D.fav));
   setTimeout(() => { map.invalidateSize(); if (ref && map.getZoom() < 14) map.setView([ref.lat, ref.lon], 15, { animate: !RM }); else pickLookup(); }, 80);
   map.on('moveend', pickMoved);
+  // Corregir la ubicación: también se puede escribir la dirección nueva y el mapa va allí
+  $('#pickSr').hidden = kind !== 'dest-move'; $('#pickQ').value = '';
 }
-function pickMoved() { clearTimeout(pickT); $('#pickT').textContent = 'Buscando la dirección…'; pickT = setTimeout(pickLookup, 450); }
+function pickMoved() { if (pick && pick.fix) { const c = map.getCenter(); if (hav({ lat: c.lat, lon: c.lng }, pick.fix) < 0.015) { pick.label = pick.fix.label; return; } pick.fix = null; } clearTimeout(pickT); $('#pickT').textContent = 'Buscando la dirección…'; pickT = setTimeout(pickLookup, 450); }
 async function pickLookup() {
   if (!pick) return;
   const my = ++pickTok, c = map.getCenter();
@@ -1194,7 +1198,7 @@ async function pickLookup() {
     $('#pickT').textContent = p.main; $('#pickS').textContent = p.sub || 'Toca «' + $('#pickOkT').textContent + '»';
   } catch (e) { if (my === pickTok) { $('#pickT').textContent = 'Punto en el mapa'; $('#pickS').textContent = 'No se ha encontrado la dirección'; } }
 }
-function endPick() { pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
+function endPick() { $('#pickSr').hidden = true; $('#pickQ').value = ''; $('#pickSug').hidden = true; pick = null; document.body.classList.remove('picking'); setTimeout(() => map.invalidateSize(), 30); clearTimeout(pickT); map.off('moveend', pickMoved); $('#pick').hidden = true; $('#pickBar').hidden = true; }
 $('#pickNo').onclick = endPick;
 $('#pickOk').onclick = () => {
   if (!pick) return; const c = map.getCenter(), k = pick.kind, lb = pick.label || 'Punto en el mapa', ref = pick.ref;
@@ -1309,6 +1313,7 @@ function setupSearch(inp, box, kind) {
   }
   function choose(it) {
     if (!it) return; inp.value = ''; close(); inp.blur();
+    if (kind === 'pick') { if (!pick) return; clearTimeout(pickT); pickTok++; pick.fix = { lat: it.lat, lon: it.lon, label: it.label }; pick.label = it.label; map.setView([it.lat, it.lon], 17, { animate: !RM }); $('#pickT').textContent = it.label; $('#pickS').textContent = 'Ajusta el mapa si hace falta y toca «' + $('#pickOkT').textContent + '»'; return; }
     if (kind === 'start') setStart(it.lat, it.lon, it.label); else if (kind === 'dest') { closeLayer(null); setTimeout(() => newDestAt(it.lat, it.lon, it.label), 60); } else addStop(it.lat, it.lon, it.label, it.cid);
   }
   async function live(q, my) {
@@ -1332,6 +1337,7 @@ function setupSearch(inp, box, kind) {
 }
 setupSearch($('#startQ'), $('#startSug'), 'start');
 setupSearch($('#stopQ'), $('#stopSug'), 'stop');
+setupSearch($('#pickQ'), $('#pickSug'), 'pick');
 
 /* =================== Destinos y visitas =================== */
 function clientOf(s) { return (s.cid && D.clients.find(c => c.id === s.cid)) || D.clients.find(c => near(c, s)) || null; }
@@ -2389,6 +2395,7 @@ const NEWS = [
   { v: '2026-11-03-3', d: '2026-11-03', t: 'Retoques al deslizar y al borrar destinos', i: [
     'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
     'Al guardar una parada en tus destinos (deslizando o desde «···»), te pide el nombre.',
+    'Al <b>corregir la ubicación</b> de un destino puedes escribir la dirección nueva: el mapa te lleva allí y solo tienes que confirmar.',
     'Corregir la ubicación o el nombre de un destino ya no cambia nada hasta que eliges: hay botón <b>Cancelar</b>, y cerrar el cuadro también cancela. Lo que eliges se puede deshacer.',
     'Retoques: el selector de tamaño de letra cabe en pantallas pequeñas; no se puede exportar a mitad de editar una jornada (se quedaría fuera del informe).',
     'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },
