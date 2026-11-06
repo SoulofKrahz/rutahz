@@ -174,7 +174,9 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .sugg h6{font:600 .6875rem Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);padding:8px 10px 4px}
 .sugg p{padding:12px 10px;font-size:.8125rem;color:var(--mu)}
 .seg{display:flex;background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:3px;gap:2px}
-.seg button{flex:1;padding:9px 6px;border-radius:11px;font-size:.8125rem;font-weight:600;color:var(--mu);min-height:40px}
+.seg button{flex:1;padding:9px 6px;border-radius:11px;font-size:.8125rem;font-weight:600;color:var(--mu);min-height:40px;line-height:1.15}
+/* Tamaño del texto: en pantallas estrechas, dos filas de dos para que «Muy grande» quepa con letra grande */
+@media (max-width:400px){#sgFs{flex-wrap:wrap}#sgFs button{flex:1 1 calc(50% - 2px)}}
 .seg button.on{background:var(--card);color:var(--em);box-shadow:0 0 0 1px var(--bd)}
 .sw{position:relative;width:46px;height:28px;flex:none}.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
 .sw span{position:absolute;inset:0;border-radius:99px;background:var(--bd);transition:background .2s}

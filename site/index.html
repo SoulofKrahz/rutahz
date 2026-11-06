@@ -174,7 +174,9 @@ label.lb{display:block;font-size:.75rem;font-weight:600;color:var(--mu);margin:0
 .sugg h6{font:600 .6875rem Inter,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);padding:8px 10px 4px}
 .sugg p{padding:12px 10px;font-size:.8125rem;color:var(--mu)}
 .seg{display:flex;background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:3px;gap:2px}
-.seg button{flex:1;padding:9px 6px;border-radius:11px;font-size:.8125rem;font-weight:600;color:var(--mu);min-height:40px}
+.seg button{flex:1;padding:9px 6px;border-radius:11px;font-size:.8125rem;font-weight:600;color:var(--mu);min-height:40px;line-height:1.15}
+/* Tamaño del texto: en pantallas estrechas, dos filas de dos para que «Muy grande» quepa con letra grande */
+@media (max-width:400px){#sgFs{flex-wrap:wrap}#sgFs button{flex:1 1 calc(50% - 2px)}}
 .seg button.on{background:var(--card);color:var(--em);box-shadow:0 0 0 1px var(--bd)}
 .sw{position:relative;width:46px;height:28px;flex:none}.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
 .sw span{position:absolute;inset:0;border-radius:99px;background:var(--bd);transition:background .2s}
@@ -751,7 +753,7 @@ input[type=color]{width:46px;height:40px;border:1px solid var(--bd);border-radiu
 <script>
 (function(){
 'use strict';
-const VER = '2026-11-03-4';
+const VER = '2026-11-06-1';
 
 /* =================== Utilidades =================== */
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -2024,6 +2026,9 @@ function periodRange(k, from, to) {
   return ['0000-01-01', '9999-12-31', 'Todas las jornadas'];
 }
 function exportDlg(pre) {
+  // Durante una edición la jornada sale del historial hasta guardarla: exportar ahora la dejaría fuera del informe
+  if (D.edit) return dlg({ title: 'Termina antes la edición', text: `Estás editando «${D.edit.snap.label}». Hasta que la guardes o descartes los cambios no saldría en el informe ni en el Excel.`,
+    acts: [{ t: 'Cerrar', cls: 'g', v: null }, { t: 'Ir a la edición', v: 1 }] }).then(v => { if (v) { closeHistView(); setView('ruta'); } });
   const per = pre || M.exP || 'mes', cols = Object.assign({ salida: false, paradas: true, km: true, tiempo: true, coste: true, notas: false, det: false }, M.exC || {});
   const cb = (k, l) => `<label style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.875rem"><input type="checkbox" data-c="${k}" ${cols[k] ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--em2)">${l}</label>`;
   dlg({
@@ -2385,6 +2390,7 @@ const NEWS = [
     'Deslizar a la derecha muestra «Guardar» desde el principio y, si ya es un destino, «Ya guardado» se lee bien.',
     'Al guardar una parada en tus destinos (deslizando o desde «···»), te pide el nombre.',
     'Corregir la ubicación o el nombre de un destino ya no cambia nada hasta que eliges: hay botón <b>Cancelar</b>, y cerrar el cuadro también cancela. Lo que eliges se puede deshacer.',
+    'Retoques: el selector de tamaño de letra cabe en pantallas pequeñas; no se puede exportar a mitad de editar una jornada (se quedaría fuera del informe).',
     'Al eliminar un destino que está en la ruta de hoy, la parada vuelve a llamarse como su dirección (con deshacer).'] },
   { v: '2026-11-03-2', d: '2026-11-03', t: 'Desliza las paradas', i: [
     'En la lista de paradas, desliza una hacia la <b>izquierda</b> para quitarla (con deshacer) o hacia la <b>derecha</b> para guardarla en tus destinos.'] },

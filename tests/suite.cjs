@@ -389,6 +389,23 @@ test('deslizar paradas', async ({ browser, base }) => {
   await ctx.close();
 });
 
+/* 6j · Editando una jornada: no se puede exportar (saldría sin ella); sin paradas no se puede guardar */
+test('editar con seguridad', async ({ browser, base }) => {
+  const d = data({ hist: [day('h1', '2026-10-28', [P(39.7217, 2.9106, 'Casa de M.'), P(39.5694, 3.2085, 'Casa de J.')])] });
+  const ctx = await L.context(browser, base, { device: devices['Pixel 7'], seed: { rz_data: d, rz_meta: meta(VER) } }), p = await L.page(ctx);
+  await p.goto(base); await L.unlock(p, { create: true });
+  await p.click('.bb button[data-v="hist"]'); await p.click('.hi'); await p.click('.amb:has-text("Editar")'); await p.waitForTimeout(500);
+  await p.click('.bb button[data-v="hist"]'); await p.click('#bExport'); await p.waitForSelector('.dlg h3');
+  ok(/Termina antes la edición/.test(await p.textContent('.dlg h3')) && !(await p.isVisible('#exP')), 'a mitad de editar, exportar avisa en vez de sacar un informe sin esa jornada');
+  await p.click('.dlg .acts button:has-text("Ir a la edición")'); await p.waitForTimeout(300);
+  ok(await p.isVisible('#editBar'), '«Ir a la edición» vuelve a la ruta en edición');
+  for (let i = 0; i < 2; i++) { await p.locator('#stopsList .pt[data-id] .gb.mn').first().click({ timeout: 5000 }); await p.click('.amb:has-text("Quitar parada")', { timeout: 5000 }); await p.waitForTimeout(400); }
+  ok(await p.isDisabled('#bEditOk'), 'sin paradas, «Guardar cambios» queda desactivado');
+  ok(await p.evaluate(() => !!__rz.D.edit && __rz.D.hist.length === 0), 'y la jornada sigue en edición, sin perderse');
+  ok(!p.errors.length, 'sin errores de JavaScript ' + p.errors.join(' | '));
+  await ctx.close();
+});
+
 /* 7 · Copias de seguridad y novedades */
 test('copias y novedades', async ({ browser, base }) => {
   const d = data({ hist: [day('h1', '2026-10-30', [P(39.6, 2.7, 'A')])] });

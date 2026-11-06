@@ -319,6 +319,9 @@ function periodRange(k, from, to) {
   return ['0000-01-01', '9999-12-31', 'Todas las jornadas'];
 }
 function exportDlg(pre) {
+  // Durante una edición la jornada sale del historial hasta guardarla: exportar ahora la dejaría fuera del informe
+  if (D.edit) return dlg({ title: 'Termina antes la edición', text: `Estás editando «${D.edit.snap.label}». Hasta que la guardes o descartes los cambios no saldría en el informe ni en el Excel.`,
+    acts: [{ t: 'Cerrar', cls: 'g', v: null }, { t: 'Ir a la edición', v: 1 }] }).then(v => { if (v) { closeHistView(); setView('ruta'); } });
   const per = pre || M.exP || 'mes', cols = Object.assign({ salida: false, paradas: true, km: true, tiempo: true, coste: true, notas: false, det: false }, M.exC || {});
   const cb = (k, l) => `<label style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.875rem"><input type="checkbox" data-c="${k}" ${cols[k] ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--em2)">${l}</label>`;
   dlg({
