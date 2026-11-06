@@ -21,3 +21,7 @@ jobs:
           echo "== proxy con origen propio"; curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/r/2.65,39.57;2.75,39.63" || echo FALLO; head -c 200 /tmp/b; echo
           curl -sS -m 25 -H "Sec-Fetch-Site: same-origin" -o /tmp/b -w "HTTP %{http_code} · %{time_total}s\n" "https://rutahz.pages.dev/t/2.65,39.57;3.21,39.57;2.91,39.72;2.72,39.77" || echo FALLO; head -c 160 /tmp/b; echo
           curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/g/search?q=Inca%2C%20Mallorca&limit=1" || echo FALLO; head -c 200 /tmp/b; echo
+          echo "== proxy photon (calle berga 48)"
+          curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/g/photon?q=calle%20berga%2048&limit=3&bbox=2.25,39.2,3.53,40.05&lat=39.5049&lon=2.7487&location_bias_scale=0.4" || echo FALLO; head -c 400 /tmp/b; echo
+          echo "== proxy nominatim por partes (berga, Llucmajor)"
+          curl -sS -m 25 -H 'Sec-Fetch-Site: same-origin' -o /tmp/b -w 'HTTP %{http_code} · %{time_total}s\n' "https://rutahz.pages.dev/g/search?street=berga&city=Llucmajor&limit=2&addressdetails=1" || echo FALLO; head -c 300 /tmp/b; echo
