@@ -22,39 +22,54 @@ const fromPh = f => { const p = f.properties || {}; return { lat: f.geometry.coo
 async function nom(q) { const p = new URLSearchParams({ q, limit: '6', addressdetails: '1', format: 'jsonv2', countrycodes: 'es', viewbox: `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`, bounded: '1' }); return (await get('https://nominatim.openstreetmap.org/search?' + p)).map(fromNom); }
 async function ph(q, near) { const p = new URLSearchParams({ q, limit: '8', bbox: `${B.lonMin},${B.latMin},${B.lonMax},${B.latMax}` }); if (near) { p.set('lat', near.lat.toFixed(4)); p.set('lon', near.lon.toFixed(4)); p.set('location_bias_scale', '0.4'); } const j = await get('https://photon.komoot.io/api/?' + p); return (j.features || []).map(fromPh); }
 const lev = (a, b) => { if (Math.abs(a.length - b.length) > 1) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
-const sim = (w, toks) => toks.reduce((m, t) => Math.max(m, t === w ? 1 : (w.length >= 4 && t.length >= 4 && (lev(w, t) <= 1 || t.startsWith(w) || w.startsWith(t))) ? 0.8 : w.length >= 3 && lev(w, t) <= 1 ? 0.6 : 0), 0);
+const sim = (w, toks) => toks.reduce((m, t) => Math.max(m, t === w ? 1 : w.length >= 4 && t.length >= 4 && lev(w, t) <= 1 ? 0.8 : w.length >= 5 && t.startsWith(w) && t.length - w.length <= 3 ? 0.7 : 0), 0);
 function townIn(q) { const n = ' ' + norm(q).replace(/[^a-z0-9' ]/g, ' ').replace(/\s+/g, ' ') + ' '; return TOWNS.filter(t => n.includes(' ' + t + ' ')).sort((a, b) => b.length - a.length)[0] || ''; }
 function rank(list, q, near) {
   const town = townIn(q), qs = noNum(q), n = numOf(q);
   const tw = new Set(words(town)), ws = words(qs).filter(w => !tw.has(w)), cw = words(catalan(qs)).filter(w => !tw.has(w)), out = [];
   for (const r of list) { if (!out.some(o => hav(o, r) < 0.04 && norm(o.road) === norm(r.road) && o.num === r.num)) out.push(r); }
   for (const r of out) {
-    const rt = words(r.road), nt = words(r.name), at = words([r.town, r.sub].join(' '));
+    const rt = [...new Set([...words(r.road), ...words(catalan(r.road))])], nt = words(r.name), at = words([r.town, r.sub].join(' '));
     const m = w => Math.max(sim(w, rt), 0.5 * sim(w, nt));
     const road = ws.length ? Math.max(ws.reduce((a, w) => a + m(w), 0) / ws.length, cw.reduce((a, w) => a + m(w), 0) / (cw.length || 1)) : 0.5;
     const tOk = !town || words(town).every(w => at.some(t => t === w || lev(t, w) <= 1));
+    r.road01 = road; r.townOk = tOk;
     r.score = road * 6 + (town ? (tOk ? 3 : -4) : 0) + (n && r.num === n ? 1.5 : 0) - (near && !town ? Math.min(hav(near, r), 45) / 15 : 0);
     r.approx = !!n && r.num !== n;
   }
   return out.sort((a, b) => b.score - a.score);
 }
+const good = l => l.filter(x => x.road01 >= 0.6 && x.townOk);
 async function nuevo(raw, near) {
   const q = cleanQuery(raw), qc = catalan(q), jobs = [nom(q).catch(() => []), ph(q, near).catch(() => [])]; if (qc !== q) { jobs.push(nom(qc).catch(() => [])); jobs.push(ph(qc, near).catch(() => [])); }
-  let r = rank((await Promise.all(jobs)).flat(), q, near).filter(x => x.score > 3);
-  if (!r.length && noNum(q) !== q) { const a = noNum(q), ac = catalan(a); const j2 = [nom(ac).catch(() => []), ph(a, near).catch(() => [])]; r = rank((await Promise.all(j2)).flat(), q, near).filter(x => x.score > 3); }
-  return r;
+  let all = (await Promise.all(jobs)).flat(), r = good(rank(all, q, near)); if (r.length) return r;
+  const a = noNum(q), ac = catalan(a);
+  if (a !== q) { all = all.concat((await Promise.all([nom(ac).catch(() => []), ph(a, near).catch(() => [])])).flat()); r = good(rank(all, q, near)); if (r.length) return r; }
+  // por partes: la calle (sin el pueblo) y el pueblo
+  const town = townIn(q);
+  if (town) {
+    const st = ac.replace(new RegExp('[,\\s]*' + town.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i'), '').trim() || ac;
+    const tn = TOWNS_FULL[town] || town;
+    const p = new URLSearchParams({ street: st, city: tn, limit: '6', addressdetails: '1', format: 'jsonv2', countrycodes: 'es', viewbox: `${B.lonMin},${B.latMax},${B.lonMax},${B.latMin}`, bounded: '1' });
+    const ex = await Promise.all([get('https://nominatim.openstreetmap.org/search?' + p).then(x => x.map(fromNom)).catch(() => []), ph(words(st).join(' ') + ' ' + tn, near).catch(() => [])]);
+    all = all.concat(ex.flat()); r = good(rank(all, q, near)); if (r.length) return r;
+    // al menos el pueblo (aproximado)
+    return rank(all, q, near).filter(x => x.townOk).slice(0, 2).map(x => ({ ...x, approx: true, onlyTown: true }));
+  }
+  return [];
 }
+const TOWNS_FULL = { 'can picafort': "Ca'n Picafort", 'sant llorenc des cardassar': 'Sant Llorenç des Cardassar', 'arenal': "s'Arenal" };
 const actual = async raw => { let r = await nom(raw.trim()); if (!r.length) { const a = raw.replace(/(,\s*|\s+)(n[º°o.]\s*)?\d+[a-z]?(?=\s*(,|$))/gi, '').trim(); if (a !== raw) r = await nom(a); } return r; };
-const lab = r => r ? `${r.road || r.name}${r.num ? ' ' + r.num : ''}, ${r.town}${r.sub ? ' (' + r.sub + ')' : ''} [${r.src}${r.approx ? ', sin nº' : ''}]` : '—';
+const lab = r => r ? `${r.road || r.name}${r.num ? ' ' + r.num : ''}, ${r.town}${r.sub ? ' (' + r.sub + ')' : ''} [${r.src}${r.onlyTown ? ', SOLO PUEBLO' : r.approx ? ', sin nº' : ''}]` : '—';
 const ARENAL = { lat: 39.5049, lon: 2.7487 }, PALMA = { lat: 39.5696, lon: 2.6502 };
 const T = [['calle berga 48', ARENAL, 'Berga@arenal'], ['calle berga 48', PALMA, 'Berga@arenal'], ['c/ berga 48, s\'arenal', PALMA, 'Berga@arenal'], ['carrer de berga 48', ARENAL, 'Berga@arenal'],
   ['calle de la luna 12 soller', PALMA, 'Lluna@soller'], ['avenida jaume III 10 palma', PALMA, 'Jaume III@palma'], ['plaza mayor inca', PALMA, 'Major@inca'], ['calle bons aires 24 llucmajor', PALMA, 'Bons Aires@llucmajor'],
-  ['avda. argentina 5', PALMA, 'Argentina'], ['calle aragon 215 palma', PALMA, 'Arag@palma'], ['carrer blanquerna 30', PALMA, 'Blanquerna'], ['calle sant miquel 50, palma', PALMA, 'Mi(qu|gu)el@palma'], ['calle mayor 5 manacor', PALMA, 'Major@manacor'], ['camino de son rapinya', PALMA, 'Son Rapinya'],
-  ['calle general riera 100', PALMA, 'General Riera'], ['carrer de la mar 3 port de pollença', PALMA, 'Mar@pollen'], ['calle conquistador inca', PALMA, 'Conquistador@inca'], ['carrer major 22 alaro', PALMA, 'Major@alar'], ['avinguda de les palmeres cala millor', PALMA, 'Palmer@millor|servera|sant llorenc'], ['calle ramon llull 15 felanitx', PALMA, 'Ram(o|ó)n Llull@felanitx']];
+  ['avda. argentina 5', PALMA, 'Argentina'], ['calle aragon 215 palma', PALMA, 'Arag@palma'], ['carrer blanquerna 30', PALMA, 'Blanquerna'], ['calle sant miquel 50, palma', PALMA, 'san(t)? mi(qu|gu)el$@palma'], ['calle mayor 5 manacor', PALMA, 'Major@manacor'], ['camino de son rapinya', PALMA, 'Son Rapinya'],
+  ['calle general riera 100', PALMA, 'General Riera'], ['carrer de la mar 3 port de pollença', PALMA, '(de la|del) mar$@pollen'], ['calle conquistador inca', PALMA, 'Conquistador@inca'], ['carrer major 22 alaro', PALMA, 'Major@alar'], ['avinguda de les palmeres cala millor', PALMA, 'Palmer@millor|servera|sant llorenc'], ['calle ramon llull 15 felanitx', PALMA, 'Ram(o|ó)n Llull@felanitx']];
 let ok0 = 0, ok1 = 0;
 for (const [q, near, want] of T) {
-  const a = (await actual(q))[0], b = await nuevo(q, near), [w, tw] = want.split('@'), good = r => r && new RegExp(norm(w), 'i').test(norm((r.road || '') + ' ' + (r.name || ''))) && (!tw || new RegExp(norm(tw), 'i').test(norm(r.town + ' ' + r.sub)));
-  if (good(a)) ok0++; if (good(b[0])) ok1++;
-  console.log(`\n«${q}» (mirando ${near === ARENAL ? "s'Arenal" : 'Palma'})\n  ahora: ${good(a) ? 'OK ' : 'MAL'} ${lab(a)}\n  nuevo: ${good(b[0]) ? 'OK ' : 'MAL'} ${lab(b[0])}${b[1] ? '   · 2º ' + lab(b[1]) : ''}`);
+  const a = (await actual(q))[0], b = await nuevo(q, near), [w, tw] = want.split('@'), isGood = r => r && !r.onlyTown && new RegExp(norm(w), 'i').test(norm((r.road || '') + ' ' + (r.name || ''))) && (!tw || new RegExp(norm(tw), 'i').test(norm(r.town + ' ' + r.sub)));
+  if (isGood(a)) ok0++; if (isGood(b[0])) ok1++;
+  console.log(`\n«${q}» (mirando ${near === ARENAL ? "s'Arenal" : 'Palma'})\n  ahora: ${isGood(a) ? 'OK ' : 'MAL'} ${lab(a)}\n  nuevo: ${isGood(b[0]) ? 'OK ' : 'MAL'} ${lab(b[0])}${b[1] ? '   · 2º ' + lab(b[1]) : ''}`);
 }
 console.log(`\n== Resumen: ahora ${ok0}/${T.length} · nuevo ${ok1}/${T.length}`);
